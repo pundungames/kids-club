@@ -581,6 +581,11 @@ MonoBehaviour:
     skin: 1
   - name: 
     obj: {fileID: 3142244626020649506}
+    type: 3
+    gender: 1
+    skin: 1
+  - name: 
+    obj: {fileID: 4664425457820686139}
     type: 2
     gender: 1
     skin: 1
