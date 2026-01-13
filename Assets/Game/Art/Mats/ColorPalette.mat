@@ -8,24 +8,24 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: ColorPalette
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
+  m_Shader: {fileID: 4800000, guid: 41d07659f9985bc41bbea0c9e6da4b01, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - TCP2_UV_NORMALS_FULL
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap:
-    RenderType: Opaque
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 5b69c7fa4c14dec48b0845425dec8f2a, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3e85ef1d6ca487541acf8535e271ad54, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -49,7 +49,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 5b69c7fa4c14dec48b0845425dec8f2a, type: 3}
+        m_Texture: {fileID: 2800000, guid: 3e85ef1d6ca487541acf8535e271ad54, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -61,6 +61,14 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SketchTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SketchTexture:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -95,28 +103,65 @@ Material:
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _DstBlendAlpha: 0
+    - _EnableConstSizeOutline: 0
+    - _EnableTexturedOutline: 0
+    - _EnableZSmooth: 0
     - _EnvironmentReflections: 1
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
+    - _HSV_H: 0
+    - _HSV_S: 0
+    - _HSV_V: 0
     - _Metallic: 0
+    - _NormalsSource: 0
+    - _NormalsUVType: 0
     - _OcclusionStrength: 1
+    - _Offset1: 0
+    - _Offset2: 0
+    - _Outline: 1
+    - _OutlineWidth: 0.82
     - _Parallax: 0.005
     - _QueueOffset: 0
+    - _RampSmooth: 0.1
+    - _RampSmoothOtherLights: 0.5
+    - _RampSmoothing: 0.382
+    - _RampSmoothingOtherLights: 0.598
+    - _RampThreshold: 0.183
+    - _RampThresholdOtherLights: 0.607
     - _ReceiveShadows: 1
-    - _Smoothness: 0
+    - _ReceiveShadowsOff: 1
+    - _SketchSpeed: 6
+    - _SketchTexture_OffsetSpeed: 120
+    - _Smoothness: 0.302
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
+    - _SpecularSmoothness: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _Surface: 0
+    - _TexLod: 5
     - _WorkflowMode: 1
+    - _ZSmooth: -0.5
     - _ZWrite: 1
+    - __BeginGroup_HSV_albedo: 0
+    - __EndGroup: 0
+    - __dummy__: 0
+    - __outline_gui_dummy__: 0
+    - _albedo_hue: 0
+    - _albedo_sat: 0
+    - _albedo_val: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _HColor: {r: 0.8301887, g: 0.8301887, b: 0.8301887, a: 1}
+    - _OutlineColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
+    - _OutlineColorVertex: {r: 0, g: 0, b: 0, a: 1}
+    - _SColor: {r: 0, g: 0.071005814, b: 0.3301887, a: 1}
+    - _SketchColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
+    - _SpecularColor: {r: 0.764151, g: 0.764151, b: 0.764151, a: 1}
   m_BuildTextureStacks: []
 --- !u!114 &505600317944611735
 MonoBehaviour:
