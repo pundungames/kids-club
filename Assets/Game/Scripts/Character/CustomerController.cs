@@ -4,19 +4,24 @@ using System.Collections;
 
 public class CustomerController : MonoBehaviour
 {
-    [Header("Ayarlar")]
+    [Header("Bileþenler")]
     public ModularCharacterManager appearanceManager;
-    public Transform iconPivot;
     public GameObject purchasedIcon;
-
-    [Header("Navigasyon")]
-    public float interactionDistance = 0.5f; // Yakýn mesafe
     private NavMeshAgent agent;
     private Animator animator;
-    private Transform exitPoint;
 
-    // Gideceðimiz masanýn scripti
+    [Header("Navigasyon Ayarlarý")]
+    public float stopThreshold = 0.05f; // Durma mesafesi
+    public float queueThreshold = 0.4f; // Sýra bekleme mesafesi
+
+    // --- YENÝ AYAR: TÝTREME ÖNLEYÝCÝ ---
+    // Karakter durduktan sonra, hedef en az bu kadar uzaklaþmazsa tekrar yürümeye baþlamaz.
+    private float moveBuffer = 0.15f;
+    private bool isMoving = true; // Þu an hareket halinde miyiz?
+
+    private Transform exitPoint;
     private CounterManager targetCounter;
+    private Vector3 targetPosition;
 
     private enum State { Spawning, InQueue, Buying, WalkingToExit }
     private State currentState;
@@ -26,7 +31,14 @@ public class CustomerController : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         if (appearanceManager == null) appearanceManager = GetComponent<ModularCharacterManager>();
-        if (purchasedIcon) purchasedIcon.SetActive(false);
+
+        if (agent != null)
+        {
+            agent.stoppingDistance = 0f;
+            agent.autoBraking = true;
+            agent.angularSpeed = 360f;
+            agent.acceleration = 12f;
+        }
     }
 
     public void Initialize(Transform counter, Transform exit, Gender genderPref, SkinType skinPref)
@@ -36,108 +48,135 @@ public class CustomerController : MonoBehaviour
 
         if (agent != null) agent.Warp(transform.position);
 
-        // Masadaki yöneticiyi bul ve sýraya gir
         targetCounter = counter.GetComponentInParent<CounterManager>();
 
         if (targetCounter != null)
         {
-            targetCounter.JoinQueue(this); // Sýraya ismini yazdýr
+            targetCounter.JoinQueue(this);
             currentState = State.InQueue;
-
-            // Sýradaki yerine doðru yürü
-            GoToQueuePosition();
-        }
-        else
-        {
-            // Masa yoksa direkt çýk (Hata önlemi)
-            currentState = State.WalkingToExit;
-            agent.SetDestination(exitPoint.position);
+            UpdateTarget(targetCounter.GetPositionForIndex(targetCounter.GetQueueIndex(this)));
         }
     }
 
-    // Masadan "Ýlerle" emri gelince bu çalýþýr
     public void UpdateQueuePosition(Vector3 newPos)
     {
         if (currentState == State.InQueue)
         {
-            agent.SetDestination(newPos);
-            if (animator) animator.SetBool("isWalking", true);
+            UpdateTarget(newPos);
         }
     }
 
-    void GoToQueuePosition()
+    void UpdateTarget(Vector3 pos)
     {
-        Vector3 myPos = targetCounter.GetMyPosition(this);
-        agent.SetDestination(myPos);
-        if (animator) animator.SetBool("isWalking", true);
+        // Hedef deðiþti mi?
+        if (Vector3.Distance(targetPosition, pos) > 0.01f)
+        {
+            targetPosition = pos;
+            if (agent != null && agent.isOnNavMesh)
+            {
+                agent.SetDestination(targetPosition);
+                // Yeni hedef geldiði için kesinlikle yürümeye baþla
+                isMoving = true;
+                if (animator) animator.SetBool("isWalking", true);
+                agent.updateRotation = true;
+                agent.isStopped = false;
+            }
+        }
     }
 
     void Update()
     {
-        if (agent == null || !agent.isOnNavMesh || !agent.isActiveAndEnabled) return;
+        if (agent == null || !agent.isOnNavMesh) return;
 
         if (currentState == State.InQueue)
         {
-            // Hedefe vardým mý?
-            if (!agent.pathPending && agent.remainingDistance < interactionDistance)
-            {
-                // Vardým ama sýra bende mi?
-                int myIndex = targetCounter.GetQueueIndex(this);
+            float dist = Vector3.Distance(transform.position, targetPosition);
+            int myIndex = targetCounter.GetQueueIndex(this);
+            float currentThreshold = (myIndex == 0) ? stopThreshold : queueThreshold;
 
-                if (myIndex == 0) // EVET! En öndeyim.
+            // --- STABÝLÝZASYON MANTIÐI ---
+
+            if (isMoving)
+            {
+                // HAREKET EDERKEN: Hedefe tam varana kadar durma (Threshold)
+                if (dist <= currentThreshold)
                 {
-                    StartCoroutine(BuyProcess());
+                    // HEDEFE VARDIK -> DUR
+                    isMoving = false;
+                    StopMovement();
+
+                    if (myIndex == 0) StartCoroutine(BuyProcess());
+                }
+            }
+            else
+            {
+                // DURURKEN: Ufak kaymalar için tekrar yürüme!
+                // Sadece hedef (Threshold + Buffer) kadar uzaklaþýrsa tekrar yürü.
+                if (dist > currentThreshold + moveBuffer)
+                {
+                    // ÇOK UZAKLAÞTIK -> YÜRÜMEYE BAÞLA
+                    isMoving = true;
+                    StartMovement();
                 }
                 else
                 {
-                    // HAYIR! Önümde adam var, bekliyorum.
-                    if (animator) animator.SetBool("isWalking", false);
-                    // (Burada istersen bekleme animasyonu oynatabilirsin)
+                    // HALA DURUYORUZ -> YÖNÜ DÜZELT
+                    RotateToZero();
                 }
             }
         }
         else if (currentState == State.WalkingToExit)
         {
-            if (!agent.pathPending && agent.remainingDistance < 1.0f)
-            {
-                Destroy(gameObject);
-            }
+            if (agent.remainingDistance < 1.0f) Destroy(gameObject);
         }
+    }
+
+    // Kod tekrarýný önlemek için yardýmcý fonksiyonlar
+    void StopMovement()
+    {
+        if (animator) animator.SetBool("isWalking", false);
+        agent.isStopped = true;       // Agent'ý kesin durdur
+        agent.velocity = Vector3.zero; // Kaymayý engelle
+        agent.updateRotation = false; // Dönmeyi durdur (Biz yöneteceðiz)
+    }
+
+    void StartMovement()
+    {
+        if (animator) animator.SetBool("isWalking", true);
+        agent.isStopped = false;
+        agent.updateRotation = true; // Agent yola baksýn
+    }
+
+    void RotateToZero()
+    {
+        Quaternion targetRotation = Quaternion.Euler(0, 0, 0);
+        if (Quaternion.Angle(transform.rotation, targetRotation) < 1f) return;
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f);
     }
 
     IEnumerator BuyProcess()
     {
-        currentState = State.Buying; // Artýk sýrada deðil iþlemdeyim
-        agent.isStopped = true;
-        if (animator) animator.SetBool("isWalking", false);
+        if (currentState == State.Buying) yield break;
+
+        currentState = State.Buying;
+        StopMovement(); // Satýn alýrken kesin dur
 
         bool transactionSuccess = false;
-
-        // Ürün gelene kadar bekle (Sonsuz döngü)
         while (!transactionSuccess)
         {
+            RotateToZero();
             transactionSuccess = targetCounter.TryGiveItem();
-
-            if (!transactionSuccess)
-            {
-                // Ürün yok, bekliyorum...
-                // (Ýleride buraya 'Sinirlenme' animasyonu koyabilirsin)
-                yield return new WaitForSeconds(1f);
-            }
+            if (!transactionSuccess) yield return new WaitForSeconds(1f);
         }
 
-        // Ürünü aldým!
         if (animator) animator.SetTrigger("Buy");
         if (purchasedIcon != null) purchasedIcon.SetActive(true);
         yield return new WaitForSeconds(1.0f);
 
-        // Ýþim bitti, sýradan kaydýmý sil (Arkadakiler ilerlesin)
         targetCounter.LeaveQueue(this);
 
-        // Çýkýþa git
         currentState = State.WalkingToExit;
-        agent.isStopped = false;
+        StartMovement(); // Çýkýþa giderken tekrar hareketlen
         agent.SetDestination(exitPoint.position);
-        if (animator) animator.SetBool("isWalking", true);
     }
 }

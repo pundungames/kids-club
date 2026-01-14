@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI; // Bunu eklemeyi unutma
 using System.Collections.Generic;
 
 public class CounterManager : MonoBehaviour
@@ -9,70 +10,74 @@ public class CounterManager : MonoBehaviour
     private List<GameObject> currentItems = new List<GameObject>();
 
     [Header("Sýra Ayarlarý")]
-    public Transform queueStartPoint; // Sýranýn baþladýðý yer (Masanýn önü)
-    public Vector3 queueDirection = new Vector3(0, 0, -1); // Sýra ne tarafa uzasýn? (Genelde arkaya)
-    public float customerSpacing = 1.0f; // Müþteriler arasý mesafe
+    public Transform queueStartPoint;
+    public int maxQueueSize = 10;
+    public float rowSpacing = 1.0f;
+    public float colSpacing = 0.8f;
 
-    // Sýrada bekleyen müþterilerin listesi
     public List<CustomerController> customerQueue = new List<CustomerController>();
+
+    public int CurrentCount => customerQueue.Count;
+    public bool IsQueueFull => customerQueue.Count >= maxQueueSize;
 
     void Start()
     {
         FillCounter();
     }
 
-    // --- SIRA YÖNETÝMÝ ---
-
-    // Müþteri geldiðinde sýraya kaydolur
     public void JoinQueue(CustomerController customer)
     {
         if (!customerQueue.Contains(customer))
         {
             customerQueue.Add(customer);
+            UpdateQueuePositions();
         }
     }
 
-    // Müþteri iþi bitince sýradan çýkar
     public void LeaveQueue(CustomerController customer)
     {
         if (customerQueue.Contains(customer))
         {
             customerQueue.Remove(customer);
-            // Biri çýkýnca arkadakilere "Ýlerleyin" emri ver
             UpdateQueuePositions();
         }
     }
 
-    // Herkesin durmasý gereken yeni yeri hesapla ve bildir
+    public int GetQueueIndex(CustomerController customer)
+    {
+        return customerQueue.IndexOf(customer);
+    }
+
+    public Vector3 GetPositionForIndex(int index)
+    {
+        int row = index / 2;
+        int col = index % 2;
+
+        // Not: Burada dükkanýnýn yönüne göre Vector3.back veya forward'ý deðiþtirebilirsin
+        Vector3 targetPos = queueStartPoint.position + (Vector3.back * (row * rowSpacing)) + (Vector3.right * (col * colSpacing));
+
+        // --- GÜVENLÝK KODU ---
+        // Hesaplanan nokta NavMesh üzerinde mi? Deðilse en yakýn zemini bul.
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(targetPos, out hit, 2.0f, NavMesh.AllAreas))
+        {
+            return hit.position;
+        }
+
+        return targetPos; // Bulamazsa mecburen ham pozisyonu döndür
+    }
+
     void UpdateQueuePositions()
     {
         for (int i = 0; i < customerQueue.Count; i++)
         {
             if (customerQueue[i] != null)
             {
-                // Formül: Baþlangýç Noktasý + (Yön * SýraNumarasý * Mesafe)
-                Vector3 targetPos = queueStartPoint.position + (queueDirection * i * customerSpacing);
-                customerQueue[i].UpdateQueuePosition(targetPos);
+                // Herkesin yerini güncelle
+                customerQueue[i].UpdateQueuePosition(GetPositionForIndex(i));
             }
         }
     }
-
-    // Müþteri kendi sýrasýný sorar: "Ben kaçýncýyým?"
-    public int GetQueueIndex(CustomerController customer)
-    {
-        return customerQueue.IndexOf(customer);
-    }
-
-    // Müþteri durmasý gereken yeri sorar
-    public Vector3 GetMyPosition(CustomerController customer)
-    {
-        int index = GetQueueIndex(customer);
-        if (index == -1) return queueStartPoint.position; // Listede yoksan baþa git
-
-        return queueStartPoint.position + (queueDirection * index * customerSpacing);
-    }
-
-    // --- ÜRÜN YÖNETÝMÝ ---
 
     public void FillCounter()
     {
