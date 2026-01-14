@@ -10,6 +10,7 @@ public class CounterManager : MonoBehaviour
     public GameObject milkBottlePrefab;
 
     private MilkCrate currentActiveCrate;
+    private bool isProductionBusy = false; // Kasa hareket halindeyken inek týklanmasýn
 
     [Header("2. SATIÞ ALANI")]
     public Transform[] salesSlots;
@@ -20,18 +21,13 @@ public class CounterManager : MonoBehaviour
     public GameObject moneyPrefab;
     private List<MoneyItem> spawnedMonies = new List<MoneyItem>();
 
-    // --- GÜNCELLEME: PARA GÖRSEL AYARLARI ---
     private const int GRID_SIZE = 4;
     private const int MAX_LAYERS = 5;
 
-    [Header("Para Dizilim Ayarlarý")]
-    public float moneySpacingX = 0.4f; // Yan yana boþluk
-    public float moneySpacingZ = 0.7f; // Arka arkaya boþluk
-    public float moneyHeight = 0.2f;   // Yükseklik (Kat arasý)
-
-    // YENÝ ÖZELLÝK: MERDÝVEN ETKÝSÝ
-    // Orthographic kamerada derinlik belli olsun diye her katý biraz kaydýrýr.
-    [Tooltip("Her katta paranýn ne kadar öne/arkaya kayacaðýný belirler.")]
+    [Header("Para Ayarlarý")]
+    public float moneySpacingX = 0.4f;
+    public float moneySpacingZ = 0.7f;
+    public float moneyHeight = 0.2f;
     public float moneyStairOffset = 0.3f;
 
     [Header("Sýra Sistemi")]
@@ -43,28 +39,39 @@ public class CounterManager : MonoBehaviour
     public bool IsQueueFull => customerQueue.Count >= maxQueueSize;
 
     void Awake() { salesSlotsContents = new MilkCrate[salesSlots.Length]; }
-
     void Start() { SpawnNewCrate(); }
 
     void SpawnNewCrate()
     {
         if (currentActiveCrate != null) return;
+
         GameObject newCrateObj = Instantiate(cratePrefab, caseSpawnPoint.position, caseSpawnPoint.rotation);
         currentActiveCrate = newCrateObj.GetComponent<MilkCrate>();
         newCrateObj.transform.SetParent(caseSpawnPoint);
         newCrateObj.transform.localScale = Vector3.one * 1.2f;
+
+        isProductionBusy = false; // Yeni kasa geldi, üretim serbest
     }
 
     public void AddMilk(Vector3 milkStartPos)
     {
-        if (currentActiveCrate == null || currentActiveCrate.IsFull) return;
-        currentActiveCrate.AddMilkToCrate(milkBottlePrefab, milkStartPos);
-        if (currentActiveCrate.IsFull) TryMoveCrateToSales();
+        // Kasa yoksa, hareket halindeyse veya mantýksal olarak doluysa iþlem yapma
+        if (currentActiveCrate == null || !currentActiveCrate.HasSpace || isProductionBusy) return;
+
+        // Sütü gönder ve þunu söyle: "Fiziksel olarak dolduðunda OnCrateFullyFilled fonksiyonunu çalýþtýr"
+        currentActiveCrate.AddMilkToCrate(milkBottlePrefab, milkStartPos, OnCrateFullyFilled);
+    }
+
+    // Bu fonksiyon sadece son süt þiþesi yerine oturduðunda çalýþýr
+    void OnCrateFullyFilled()
+    {
+        TryMoveCrateToSales();
     }
 
     void TryMoveCrateToSales()
     {
-        if (currentActiveCrate == null || !currentActiveCrate.IsFull) return;
+        // Kasa fiziksel olarak tam dolu deðilse asla taþýma!
+        if (currentActiveCrate == null || !currentActiveCrate.IsPhysicallyFull) return;
 
         int emptySlotIndex = -1;
         for (int i = 0; i < salesSlotsContents.Length; i++)
@@ -74,14 +81,39 @@ public class CounterManager : MonoBehaviour
 
         if (emptySlotIndex != -1)
         {
+            isProductionBusy = true; // Kasa uçuþa geçti, bu sýrada süt eklenemez
+
             Transform targetSlot = salesSlots[emptySlotIndex];
-            currentActiveCrate.transform.SetParent(targetSlot);
-            currentActiveCrate.transform.localPosition = Vector3.zero;
-            currentActiveCrate.transform.localRotation = Quaternion.Euler(0f, -90f, 0f);
-            currentActiveCrate.transform.localScale = Vector3.one * 0.6f;
+
+            // Slotu rezerve et (Müþteri buraya bakabilir artýk)
             salesSlotsContents[emptySlotIndex] = currentActiveCrate;
+
+            // Kasa referansýný boþa çýkar ki inek yanlýþ kasaya süt atmasýn
+            MilkCrate movingCrate = currentActiveCrate;
             currentActiveCrate = null;
-            SpawnNewCrate();
+
+            // Uçuþ Motoru
+            FlyingItem flyer = movingCrate.gameObject.GetComponent<FlyingItem>();
+            if (flyer == null) flyer = movingCrate.gameObject.AddComponent<FlyingItem>();
+
+            flyer.FlyTo(targetSlot.position, () =>
+            {
+                if (movingCrate != null)
+                {
+                    movingCrate.transform.SetParent(targetSlot);
+                    movingCrate.transform.localPosition = Vector3.zero;
+                    movingCrate.transform.localRotation = Quaternion.Euler(0f, -90f, 0f);
+                    movingCrate.transform.localScale = Vector3.one * 0.6f;
+                }
+
+                // Uçuþ bitti, yeni kasa yarat
+                SpawnNewCrate();
+            });
+        }
+        else
+        {
+            Debug.Log("Satýþ rafý dolu, kasa bekliyor.");
+            // Yer açýlýnca CheckProductionLine çaðrýlacak.
         }
     }
 
@@ -92,7 +124,12 @@ public class CounterManager : MonoBehaviour
         int indexToSell = -1;
         for (int i = 0; i < salesSlotsContents.Length; i++)
         {
-            if (salesSlotsContents[i] != null) { indexToSell = i; break; }
+            // Sadece dolu slotlara bak ve fiziksel olarak yerleþmiþ mi kontrol et
+            if (salesSlotsContents[i] != null && salesSlotsContents[i].transform.parent == salesSlots[i])
+            {
+                indexToSell = i;
+                break;
+            }
         }
 
         if (indexToSell != -1)
@@ -119,18 +156,14 @@ public class CounterManager : MonoBehaviour
         int floorIndex = index % 4;
         int row = floorIndex / 2;
         int col = floorIndex % 2;
-
-        // --- MERDÝVEN HESABI ---
-        // Her kat (layer) arttýðýnda, Z ekseninde 'moneyStairOffset' kadar kaydýrýyoruz.
         float stairShift = layer * moneyStairOffset;
 
         Vector3 targetPos = moneySpawnPoint.position +
                            (moneySpawnPoint.right * col * moneySpacingX) +
                            (moneySpawnPoint.forward * row * moneySpacingZ) +
-                           (moneySpawnPoint.forward * stairShift) +  // <-- Merdiven Etkisi Burasý
+                           (moneySpawnPoint.forward * stairShift) +
                            (Vector3.up * layer * moneyHeight);
 
-        // Y Ekseninde -90 derece rotasyon
         Quaternion moneyRot = Quaternion.Euler(0, -90, 0);
         GameObject newMoney = Instantiate(moneyPrefab, startPos, moneyRot);
 
@@ -141,7 +174,6 @@ public class CounterManager : MonoBehaviour
 
         FlyingItem flyer = newMoney.GetComponent<FlyingItem>();
         if (flyer == null) flyer = newMoney.AddComponent<FlyingItem>();
-
         flyer.FlyTo(targetPos);
     }
 
@@ -150,9 +182,19 @@ public class CounterManager : MonoBehaviour
         if (spawnedMonies.Contains(money)) spawnedMonies.Remove(money);
     }
 
+    // Satýþ yapýldýðýnda üretim bandýnda bekleyen TAM DOLU kasa var mý diye bakar
     void CheckProductionLine()
     {
-        if (currentActiveCrate != null && currentActiveCrate.IsFull) TryMoveCrateToSales();
+        // Burada currentActiveCrate'in null olup olmamasýný deðil,
+        // fiziksel olarak dolu olup olmadýðýný kontrol etmeliyiz.
+        // Ama yukarýdaki logic (OnCrateFullyFilled) zaten dolunca tetikleniyor.
+        // Sadece yer yoksa bekliyordu. Tekrar tetikleyelim.
+
+        // Eðer üretimde bir kasa varsa ve fiziksel olarak dolduysa ama gidememiþse:
+        if (currentActiveCrate != null && currentActiveCrate.IsPhysicallyFull)
+        {
+            TryMoveCrateToSales();
+        }
     }
 
     public void JoinQueue(CustomerController customer)

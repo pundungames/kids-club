@@ -1,23 +1,46 @@
 using UnityEngine;
+using System;
 
 public class MilkCrate : MonoBehaviour
 {
     [Header("Kasa Ayarlarý")]
     public Transform[] milkSlots;
-    private int currentMilkCount = 0;
 
-    // --- YENÝ AYAR: ÞÝÞE BOYUTU ---
-    // Eskiden 1.0'dý. Þimdi 0.8 yaptýk (0.2 küçüldü).
-    // Editörden istediðin gibi deðiþtirebilirsin.
+    // Ulaþan (Görünen) Süt Sayýsý
+    private int landedMilkCount = 0;
+
+    // Havada Olan + Ulaþan Toplam Süt (Mantýksal Sayý)
+    private int targetMilkCount = 0;
+
     public float bottleScale = 0.8f;
 
-    public bool IsFull => currentMilkCount >= milkSlots.Length;
+    // Kasa tamamen doldu mu? (Hareket için buna bakacaðýz)
+    public bool IsPhysicallyFull => landedMilkCount >= milkSlots.Length;
 
-    public void AddMilkToCrate(GameObject milkPrefab, Vector3 startPos)
+    // Süt gelecek yer kaldý mý? (Ýnek týklamasý için buna bakacaðýz)
+    public bool HasSpace => targetMilkCount < milkSlots.Length;
+
+    void Start()
     {
-        if (IsFull) return;
+        // Baþlangýçta boþsa gizle (Hayalet Modu)
+        if (landedMilkCount == 0) ToggleVisuals(false);
+    }
 
-        Transform targetSlot = milkSlots[currentMilkCount];
+    // --- SÜT EKLEME ---
+    // Action onFull: Kasa fiziksel olarak dolduðunda Manager'a haber verecek
+    public void AddMilkToCrate(GameObject milkPrefab, Vector3 startPos, Action onFull)
+    {
+        // Eðer yer yoksa iþlem yapma
+        if (!HasSpace) return;
+
+        // 1. Hemen görünür yap (Ýlk süt yola çýktý)
+        if (targetMilkCount == 0) ToggleVisuals(true);
+
+        // 2. Hedef slotu belirle
+        Transform targetSlot = milkSlots[targetMilkCount];
+
+        // 3. Mantýksal sayýyý artýr (Artýk buraya baþka süt gelemez)
+        targetMilkCount++;
 
         if (milkPrefab != null)
         {
@@ -26,18 +49,36 @@ public class MilkCrate : MonoBehaviour
             FlyingItem flyer = newMilk.GetComponent<FlyingItem>();
             if (flyer == null) flyer = newMilk.AddComponent<FlyingItem>();
 
+            // Uçuþ Hýzý (Daha hýzlý varsýn ki bekletmesin)
+            // FlyingItem scriptinde hýzý public yapmadýysan burasý standart çalýþýr.
+
             flyer.FlyTo(targetSlot.position, () =>
             {
-                newMilk.transform.SetParent(targetSlot);
-                newMilk.transform.localPosition = Vector3.zero;
-                newMilk.transform.localRotation = Quaternion.identity;
+                // --- SÜT YERÝNE VARDIÐINDA ---
+                if (newMilk != null)
+                {
+                    newMilk.transform.SetParent(targetSlot);
+                    newMilk.transform.localPosition = Vector3.zero;
+                    newMilk.transform.localRotation = Quaternion.identity;
+                    newMilk.transform.localScale = Vector3.one * bottleScale;
+                }
 
-                // --- GÜNCELLEME BURADA ---
-                // Þiþeyi senin belirlediðin boyuta getiriyoruz.
-                newMilk.transform.localScale = Vector3.one * bottleScale;
+                // Fiziksel sayacý artýr
+                landedMilkCount++;
+
+                // Eðer son süt de indiyse ve kasa tamamen dolduysa
+                if (IsPhysicallyFull)
+                {
+                    // Manager'a haber ver: "Ben hazýrým, beni uçur!"
+                    onFull?.Invoke();
+                }
             });
         }
+    }
 
-        currentMilkCount++;
+    public void ToggleVisuals(bool isActive)
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        foreach (Renderer r in renderers) r.enabled = isActive;
     }
 }
