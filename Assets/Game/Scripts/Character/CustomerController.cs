@@ -12,16 +12,14 @@ public class CustomerController : MonoBehaviour
     private Animator animator;
 
     [Header("Navigasyon Ayarlarý")]
-    public float stopThreshold = 0.2f; // Hedefe ne kadar yaklaþýnca dursun?
+    public float stopThreshold = 0.2f;
 
     private Transform exitPoint;
     private CounterManager targetCounter;
     private Vector3 currentTargetPos;
 
-    // Müþteri satýn almaya hazýr mý? (Sýranýn en baþýnda ve durmuþ vaziyette)
     public bool isReadyToBuy = false;
 
-    // Durumlar
     private enum State { Spawning, MovingToQueue, WaitingInQueue, WalkingToExit }
     private State currentState;
 
@@ -33,10 +31,11 @@ public class CustomerController : MonoBehaviour
 
         if (agent != null)
         {
-            agent.stoppingDistance = 0f; // Durmayý biz kodla yapacaðýz
+            agent.stoppingDistance = 0f;
             agent.autoBraking = false;
             agent.angularSpeed = 360f;
             agent.acceleration = 20f;
+            agent.speed = 3.5f; // Hýzýn 0 olmadýðýndan emin olalým
         }
     }
 
@@ -45,66 +44,77 @@ public class CustomerController : MonoBehaviour
         exitPoint = exit;
         if (appearanceManager != null) appearanceManager.BuildCharacter(genderPref, skinPref);
 
-        // NavMesh Fix (Zemine oturt)
-        if (agent != null) { agent.Warp(transform.position); agent.enabled = true; }
+        // --- 1. NAVMESH FIX ---
+        // Agent'ý kapatýp açmak bazen NavMesh'e oturmasýný garanti eder
+        if (agent != null)
+        {
+            agent.enabled = false;
+            agent.Warp(transform.position);
+            agent.enabled = true;
+        }
 
-        // CounterManager'ý bul (Parent/Child aramalý)
+        // --- 2. MASAYI BULMA (Senin þüphelendiðin kýsým) ---
         targetCounter = counter.GetComponent<CounterManager>();
         if (targetCounter == null) targetCounter = counter.GetComponentInParent<CounterManager>();
         if (targetCounter == null) targetCounter = counter.GetComponentInChildren<CounterManager>();
 
         if (targetCounter != null)
         {
+            // Debug: Masayý bulduðunu konsola yazsýn
+            Debug.Log($"Masa Bulundu: {targetCounter.name}. Sýraya giriliyor...");
+
             targetCounter.JoinQueue(this);
 
-            // Ýlk hedefi al
             Vector3 queuePos = targetCounter.GetPositionForIndex(targetCounter.GetQueueIndex(this));
             MoveTo(queuePos);
             currentState = State.MovingToQueue;
         }
+        else
+        {
+            Debug.LogError("KRÝTÝK HATA: Müþteri CounterManager scriptini bulamadý! Spawner'a sürüklediðin objeyi kontrol et.");
+        }
     }
 
-    // --- SIRA ÝLERLEME SÝSTEMÝ ---
     public void UpdateQueuePosition(Vector3 newPos)
     {
-        // Eðer zaten çýkýþa gidiyorsa sýrayý takma
         if (currentState == State.WalkingToExit) return;
 
-        // Yeni pozisyon ile þu anki yerim arasýndaki mesafe kayda deðer mi?
-        if (Vector3.Distance(transform.position, newPos) > 0.1f)
+        // Yükseklik farkýný yok sayarak mesafe ölç (Flat Distance)
+        if (GetFlatDistance(transform.position, newPos) > 0.1f)
         {
-            // Evet, ilerlemem lazým -> Yürüme Moduna Geç
             MoveTo(newPos);
             currentState = State.MovingToQueue;
             isReadyToBuy = false;
         }
     }
 
-    // Yürüme Emri
     void MoveTo(Vector3 pos)
     {
         currentTargetPos = pos;
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = false;
-            agent.SetDestination(currentTargetPos);
 
-            // Animasyon: YÜRÜ
+            // Hedefe gidilebilir mi kontrol et?
+            bool pathFound = agent.SetDestination(currentTargetPos);
+
+            if (!pathFound)
+            {
+                Debug.LogWarning("NavMesh bu hedefe yol bulamadý! Hedef NavMesh dýþýnda olabilir.");
+            }
+
             if (animator) animator.SetBool("isWalking", true);
         }
     }
 
-    // Durma Emri
     void StopMovement()
     {
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = true;
-            agent.velocity = Vector3.zero; // Kaymayý engelle
-            agent.ResetPath(); // Hedefi unut
+            agent.velocity = Vector3.zero;
+            agent.ResetPath();
         }
-
-        // Animasyon: DUR (IDLE)
         if (animator) animator.SetBool("isWalking", false);
     }
 
@@ -112,49 +122,59 @@ public class CustomerController : MonoBehaviour
     {
         if (agent == null || !agent.isOnNavMesh) return;
 
-        // --- DURUM 1: SIRADAKÝ YERÝNE GÝDÝYOR ---
         if (currentState == State.MovingToQueue)
         {
-            float dist = Vector3.Distance(transform.position, currentTargetPos);
+            // --- 3. DÜZELTME: YÜKSEKLÝK FARKINI YOK SAY ---
+            // Karakterin kafasý ile yerdeki nokta arasýndaki mesafeyi ölçmemesi için Y'leri sýfýrlýyoruz.
+            float dist = GetFlatDistance(transform.position, currentTargetPos);
 
-            // Hedefe vardýk mý?
             if (dist <= stopThreshold)
             {
-                StopMovement(); // Hemen dur ve animasyonu kes
+                StopMovement();
                 currentState = State.WaitingInQueue;
 
-                // Eðer sýranýn en baþýndaysak -> Satýn almaya hazýr ol
                 if (targetCounter.GetQueueIndex(this) == 0)
                 {
                     isReadyToBuy = true;
                 }
             }
+            else
+            {
+                // Ekstra Güvenlik: Hedefte deðiliz ama durmuþuz? (Takýlma Önleyici)
+                if (agent.velocity.sqrMagnitude < 0.1f && dist > 1.0f)
+                {
+                    agent.SetDestination(currentTargetPos);
+                }
+            }
         }
-        // --- DURUM 2: SIRADA BEKLÝYOR (IDLE) ---
         else if (currentState == State.WaitingInQueue)
         {
-            // Beklerken yüzümüz masaya dönük olsun
             RotateTowards(targetCounter.transform.position);
 
-            // Bazen fiziksel itilmeler olur, yerinden çok kaydýysa düzelt
-            if (Vector3.Distance(transform.position, currentTargetPos) > 0.5f)
+            if (GetFlatDistance(transform.position, currentTargetPos) > 0.5f)
             {
-                MoveTo(currentTargetPos); // Tekrar yürü
+                MoveTo(currentTargetPos);
                 currentState = State.MovingToQueue;
                 isReadyToBuy = false;
             }
         }
-        // --- DURUM 3: ÇIKIÞA GÝDÝYOR ---
         else if (currentState == State.WalkingToExit)
         {
-            if (Vector3.Distance(transform.position, exitPoint.position) < 1.5f)
+            if (GetFlatDistance(transform.position, exitPoint.position) < 1.5f)
             {
-                Destroy(gameObject); // Oyundan sil
+                Destroy(gameObject);
             }
         }
     }
 
-    // --- BU FONKSÝYONU MASA (CounterManager) ÇAÐIRACAK ---
+    // Yükseklik farkýný önemsemeyen mesafe ölçer
+    float GetFlatDistance(Vector3 a, Vector3 b)
+    {
+        a.y = 0;
+        b.y = 0;
+        return Vector3.Distance(a, b);
+    }
+
     public void CompletePurchase()
     {
         StartCoroutine(PurchaseRoutine());
@@ -162,16 +182,13 @@ public class CustomerController : MonoBehaviour
 
     IEnumerator PurchaseRoutine()
     {
-        // Satýn alma animasyonu (Varsa)
         if (animator) animator.SetTrigger("Buy");
         if (purchasedIcon != null) purchasedIcon.SetActive(true);
 
-        yield return new WaitForSeconds(0.5f); // Animasyon süresi
+        yield return new WaitForSeconds(0.5f);
 
-        // Masaya haber ver: "Ben gidiyorum, sýradan düþ"
         targetCounter.LeaveQueue(this);
 
-        // Çýkýþ moduna geç
         currentState = State.WalkingToExit;
         MoveTo(exitPoint.position);
     }
