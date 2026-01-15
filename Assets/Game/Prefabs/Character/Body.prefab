@@ -604,7 +604,7 @@ MonoBehaviour:
   appearanceManager: {fileID: 3656899480613743841}
   purchasedIcon: {fileID: 0}
   stopThreshold: 0.01
-  queueThreshold: 0.1
+  isReadyToBuy: 0
 --- !u!136 &7930357524834255684
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -638,7 +638,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.2
-  m_Speed: 1.5
+  m_Speed: 2
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 120
