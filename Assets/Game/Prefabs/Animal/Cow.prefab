@@ -1968,10 +1968,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 8448714906250969625}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 88c7438db33ab0245b09ef0c0fd99ad7, type: 3}
+  m_Script: {fileID: 11500000, guid: 4b82300283c298f4cb4fc011b16efbb9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   counterManager: {fileID: 0}
+  packageManager: {fileID: 0}
+  feedTrough: {fileID: 0}
+  waterTrough: {fileID: 0}
+  progressBar: {fileID: 0}
+  timerCanvas: {fileID: 0}
+  milkIndicator: {fileID: 0}
+  needsIndicator: {fileID: 0}
+  productionBatchSize: 3
+  baseTimePerMilk: 30
 --- !u!65 &2243893619858744438
 BoxCollider:
   m_ObjectHideFlags: 0

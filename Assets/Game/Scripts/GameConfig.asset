@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42ebcb6c80bde4149906c0651166315c, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: 
+  maxCowSlots: 12
+  cowsPerStation: 4
+  baseMilkProductionTime: 30
+  baseMilkStorageLimit: 3
+  tapHoldSpeedMultiplier: 0.75
+  minProductionTime: 10
+  packageSize: 4
+  packageStationCapacityBase: 8
+  customerQueueMax: 4
+  customerMinRequest: 1
+  customerMaxRequest: 4
+  moneyPerMilk: 1
+  feedingInterval: 30
+  wateringInterval: 30
+  feedingTapFill: 0.25
+  wateringTapFill: 0.25
+  baseCostCow: 50
+  costMultiplierCow: 1.5
+  baseCostDepo: 100
+  costMultiplierDepo: 1.7
+  globalSpeedMultiplierNormal: 1
+  globalSpeedMultiplierFast: 0.67
+  globalSpeedMultiplierSuper: 0.5
+  customerRichMultiplierNormal: 1
+  customerRichMultiplierPlus50: 1.5
+  customerRichMultiplierPlus100: 2
+  autoWorkerInterval: 1
+  maxOfflineTime: 86400

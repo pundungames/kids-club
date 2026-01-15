@@ -1,3 +1,4 @@
+using MilkFarm;
 using UnityEngine;
 
 public class InputManager : MonoBehaviour
