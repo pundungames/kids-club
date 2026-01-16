@@ -10,7 +10,7 @@ namespace MilkFarm
     /// Offline'da her inek en fazla kendi kapasitesi kadar süt üretebilir
     /// </summary>
     public class OfflineProgressManager : MonoBehaviour
-    {
+    { 
         [Inject] private GameConfig config;
         [Inject] private SaveManager saveManager;
         [Inject] private CowManager cowManager;

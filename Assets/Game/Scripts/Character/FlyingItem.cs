@@ -1,5 +1,5 @@
-using UnityEngine;
-using System; // Action için gerekli
+ï»¿using UnityEngine;
+using System; // Action iï¿½in gerekli
 
 public class FlyingItem : MonoBehaviour
 {

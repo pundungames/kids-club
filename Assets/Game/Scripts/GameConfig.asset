@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: GameConfig
   m_EditorClassIdentifier: 
   maxCowSlots: 12
-  cowsPerStation: 4
-  baseMilkProductionTime: 30
-  baseMilkStorageLimit: 3
+  cowsPerStation: 3
+  baseMilkProductionTime: 0.5
+  baseMilkStorageLimit: 6
   tapHoldSpeedMultiplier: 0.75
-  minProductionTime: 10
+  minProductionTime: 0.2
   packageSize: 4
   packageStationCapacityBase: 8
   customerQueueMax: 4

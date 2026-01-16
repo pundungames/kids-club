@@ -1,12 +1,19 @@
+using MilkFarm;
 using UnityEngine;
+using Zenject;
 
+/// <summary>
+/// Müþteri spawn eden component - Zenject ile
+/// </summary>
 public class CustomerSpawner : MonoBehaviour
 {
+    [Inject] private DiContainer container;
+    [Inject] private CustomerManager customerManager;
+
     [Header("Müþteri Ayarlarý")]
     public GameObject customerPrefab;
     public Transform spawnPoint;
-    public Transform[] counterPoints; // Masalar
-    public Transform[] exitPoints;
+    public Transform exitPoint;
 
     [Header("Özellikler")]
     public Gender spawnGender = Gender.Both;
@@ -15,33 +22,61 @@ public class CustomerSpawner : MonoBehaviour
 
     void Start()
     {
+        if (customerManager == null)
+        {
+            Debug.LogError("[CustomerSpawner] CustomerManager inject edilmedi! Zenject binding kontrol et!");
+            return;
+        }
+
+        Debug.Log("[CustomerSpawner] CustomerManager inject edildi (Zenject). Spawn baþlýyor...");
+
+        // Otomatik spawn baþlat
         InvokeRepeating(nameof(SpawnCustomer), 1f, spawnInterval);
     }
 
     void SpawnCustomer()
     {
-        if (counterPoints.Length == 0) return;
-
-        // 1. RASTGELE BÝR MASA SEÇ
-        Transform randomCounterPoint = counterPoints[Random.Range(0, counterPoints.Length)];
-        CounterManager counterManager = randomCounterPoint.GetComponentInParent<CounterManager>();
-
-        // 2. KONTROL ET: O masada 10 kiþi var mý?
-        if (counterManager != null && counterManager.IsQueueFull)
+        // Kuyruk dolu mu?
+        if (customerManager != null && customerManager.IsQueueFull)
         {
-            // Masa dolu! Bu turu pas geç. Spawn etme.
-            Debug.Log("Masa dolu, müþteri gelmiyor.");
+            Debug.Log("[CustomerSpawner] Kuyruk dolu, müþteri gelmiyor.");
             return;
         }
 
-        // 3. SPAWN ET
-        GameObject newCustomer = Instantiate(customerPrefab, spawnPoint.position, Quaternion.identity);
-        CustomerController ctrl = newCustomer.GetComponent<CustomerController>();
+        if (customerPrefab == null || spawnPoint == null)
+        {
+            Debug.LogError("[CustomerSpawner] Prefab veya spawn point atanmamýþ!");
+            return;
+        }
 
+        // Müþteriyi spawn et
+        GameObject newCustomer = Instantiate(customerPrefab, spawnPoint.position, Quaternion.identity);
+
+        // Zenject ile inject et
+        container.InjectGameObject(newCustomer);
+
+        CustomerController ctrl = newCustomer.GetComponent<CustomerController>();
         if (ctrl != null)
         {
-            Transform selectedExit = exitPoints[Random.Range(0, exitPoints.Length)];
-            ctrl.Initialize(randomCounterPoint, selectedExit, spawnGender, spawnSkin);
+            // Rastgele görünüm
+            Gender gender = spawnGender == Gender.Both
+                ? (Gender)Random.Range(0, 2)
+                : spawnGender;
+
+            SkinType skin = spawnSkin == SkinType.Both
+                ? (SkinType)Random.Range(0, System.Enum.GetValues(typeof(SkinType)).Length)
+                : spawnSkin;
+
+            // Initialize - artýk counterTransform gerekmiyor!
+            ctrl.Initialize(exitPoint, gender, skin);
+
+            Debug.Log($"[CustomerSpawner] Müþteri spawn edildi (Zenject).");
         }
+    }
+
+    [ContextMenu("Debug: Spawn Now")]
+    public void DebugSpawnNow()
+    {
+        SpawnCustomer();
     }
 }

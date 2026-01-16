@@ -19,7 +19,7 @@ namespace MilkFarm
             LoadIAPData();
         }
 
-        private void LoadIAPData()
+        private void LoadIAPData() 
         {
             var saveData = saveManager.GetCurrentSaveData();
             iapData = saveData.iap;

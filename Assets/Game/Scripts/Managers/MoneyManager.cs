@@ -6,13 +6,13 @@ namespace MilkFarm
 {
     /// <summary>
     /// Para sistemini yöneten manager
-    /// Kazanma, harcama, toplama işlemlerini yönetir
+    /// CounterManager'daki stack ve flying sistem ile entegre
     /// </summary>
     public class MoneyManager : MonoBehaviour
     {
         [Inject] private SaveManager saveManager;
 
-        [Header("Para UI")]
+        [Header("Para Spawn")]
         [SerializeField] private Transform moneySpawnPoint;
         [SerializeField] private GameObject moneyPrefab;
 
@@ -28,6 +28,7 @@ namespace MilkFarm
         private List<GameObject> spawnedMoneyObjects = new List<GameObject>();
 
         private const int GRID_SIZE = 4;
+        private const int MAX_LAYERS = 5;
 
         private void Start()
         {
@@ -44,13 +45,14 @@ namespace MilkFarm
         /// <summary>
         /// Para kazanma (müşteriden)
         /// </summary>
-        public void EarnMoney(float amount)
+        public void EarnMoney(float amount, Vector3? spawnPosition = null)
         {
             pendingMoneyOnTable += amount;
             MilkFarmEvents.MoneyEarned(amount);
 
             // Masada görsel para spawn et
-            SpawnMoneyVisual(amount);
+            Vector3 startPos = spawnPosition ?? moneySpawnPoint.position;
+            SpawnMoneyVisual(startPos);
 
             Debug.Log($"[MoneyManager] Para kazanıldı: {amount}. Masada bekleyen: {pendingMoneyOnTable}");
         }
@@ -103,14 +105,14 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// Görsel para spawn et
+        /// Görsel para spawn et (CounterManager mantığı)
         /// </summary>
-        private void SpawnMoneyVisual(float amount)
+        private void SpawnMoneyVisual(Vector3 startPos)
         {
             if (moneyPrefab == null || moneySpawnPoint == null) return;
-            if (spawnedMoneyObjects.Count >= maxMoneyStacksOnTable)
+            if (spawnedMoneyObjects.Count >= GRID_SIZE * MAX_LAYERS)
             {
-                Debug.LogWarning("[MoneyManager] Masa para ile dolu, yeni para spawn edilemiyor!");
+                Debug.LogWarning("[MoneyManager] Masa para ile dolu!");
                 return;
             }
 
@@ -128,11 +130,19 @@ namespace MilkFarm
                                (Vector3.up * layer * moneyHeight);
 
             Quaternion moneyRot = Quaternion.Euler(0, -90, 0);
-            GameObject moneyObj = Instantiate(moneyPrefab, targetPos, moneyRot);
+            GameObject moneyObj = Instantiate(moneyPrefab, startPos, moneyRot);
+
+            // MoneyItem component'i (tıklama için)
+            MoneyItem moneyScript = moneyObj.GetComponent<MoneyItem>();
+            if (moneyScript == null) moneyScript = moneyObj.AddComponent<MoneyItem>();
+            moneyScript.Initialize(this);
+
             spawnedMoneyObjects.Add(moneyObj);
 
-            // Flying animation eklenebilir
-            // FlyToPosition(moneyObj, targetPos);
+            // Flying animation
+            FlyingItem flyer = moneyObj.GetComponent<FlyingItem>();
+            if (flyer == null) flyer = moneyObj.AddComponent<FlyingItem>();
+            flyer.FlyTo(targetPos);
         }
 
         /// <summary>
@@ -148,6 +158,17 @@ namespace MilkFarm
                 }
             }
             spawnedMoneyObjects.Clear();
+        }
+
+        /// <summary>
+        /// Para toplandığında çağrılır (MoneyItem'dan)
+        /// </summary>
+        public void OnMoneyCollected(MoneyItem money)
+        {
+            if (spawnedMoneyObjects.Contains(money.gameObject))
+            {
+                spawnedMoneyObjects.Remove(money.gameObject);
+            }
         }
 
         /// <summary>
@@ -175,6 +196,38 @@ namespace MilkFarm
             currentMoney += 1000f;
             SaveMoney();
             Debug.Log($"[MoneyManager] 1000 para eklendi! Toplam: {currentMoney}");
+        }
+
+        /// <summary>
+        /// Masa click handler (TableClicker'dan çağrılır)
+        /// </summary>
+        public void OnTableClicked()
+        {
+            CollectMoneyFromTable();
+        }
+    }
+
+    /// <summary>
+    /// Para objesi - tıklanabilir
+    /// MoneyManager ile entegre (CounterManager mantığı)
+    /// </summary>
+    public class MoneyItem : MonoBehaviour
+    {
+        private MoneyManager manager;
+
+        public void Initialize(MoneyManager managerRef)
+        {
+            manager = managerRef;
+        }
+
+        void OnMouseDown()
+        {
+            if (manager != null)
+            {
+                manager.OnMoneyCollected(this);
+            }
+
+            Destroy(gameObject);
         }
     }
 }

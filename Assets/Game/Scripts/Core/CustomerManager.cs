@@ -1,249 +1,233 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using Zenject;
 
 namespace MilkFarm
 {
-    /// <summary>
-    /// Tek bir müşterinin verisi
-    /// </summary>
     [System.Serializable]
     public class Customer
     {
         public int id;
-        public int requestedPackages;
-        public int remainingPackages;
+        public int requestedBottles;
+        public int remainingBottles;
         public float totalPayment;
-        public GameObject gameObject;
+        public CustomerController controller;
 
-        public Customer(int customerId, int packages, float payment)
+        public Customer(int customerId, int bottles, float payment)
         {
             id = customerId;
-            requestedPackages = packages;
-            remainingPackages = packages;
+            requestedBottles = bottles;
+            remainingBottles = bottles;
             totalPayment = payment;
         }
 
-        public bool IsServed => remainingPackages <= 0;
+        public bool IsServed => remainingBottles <= 0;
     }
 
-    /// <summary>
-    /// Müşteri kuyruğu ve sipariş sistemini yöneten manager
-    /// GDD v2'ye göre tam implementation
-    /// </summary>
     public class CustomerManager : MonoBehaviour
     {
         [Inject] private GameConfig config;
         [Inject] private IAPManager iapManager;
         [Inject] private MoneyManager moneyManager;
 
-        [Header("Müşteri Spawn")]
-        [SerializeField] private GameObject customerPrefab;
-        [SerializeField] private Transform[] queuePositions; // 4 pozisyon (2x2)
-        [SerializeField] private Transform spawnPoint;
-        [SerializeField] private Transform exitPoint;
-
-        [Header("Para Spawn")]
-        [SerializeField] private Transform moneyTableTransform;
+        [Header("Sıra Sistemi")]
+        [SerializeField] internal Transform queueStartPoint;
+        [SerializeField] private float rowSpacing = 2.0f;
+        [SerializeField] private float colSpacing = 1.5f;
+        [SerializeField] private int maxQueueSize = 10;
 
         private List<Customer> customerQueue = new List<Customer>();
         private int customerIdCounter = 0;
 
+        public bool IsQueueFull => customerQueue.Count >= maxQueueSize;
+
         private void Start()
         {
-            // Başlangıçta kuyruğu doldur
-            FillQueue();
+            Debug.Log("[CustomerManager] Başlatıldı.");
         }
 
-        /// <summary>
-        /// Kuyruğu doldur
-        /// GDD: Queue her zaman dolu kalır
-        /// </summary>
-        private void FillQueue()
+        public void JoinQueue(CustomerController controller)
         {
-            while (customerQueue.Count < config.customerQueueMax)
+            if (customerQueue.Count >= maxQueueSize)
             {
-                SpawnCustomer();
-            }
-        }
-
-        /// <summary>
-        /// Yeni müşteri spawn et
-        /// </summary>
-        private void SpawnCustomer()
-        {
-            if (customerQueue.Count >= config.customerQueueMax)
-            {
-                MilkFarmEvents.QueueFull();
+                Debug.LogWarning("[CustomerManager] Kuyruk dolu!");
+                Destroy(controller.gameObject);
                 return;
             }
 
-            // Rastgele paket talebi
-            int requestedPackages = Random.Range(config.customerMinRequest, config.customerMaxRequest + 1);
-
-            // Ödeme hesapla
-            float basePayment = requestedPackages * config.packageSize * config.moneyPerMilk;
+            int requestedBottles = Random.Range(config.customerMinRequest, config.customerMaxRequest + 1);
+            float basePayment = requestedBottles * config.moneyPerMilk;
             float richMultiplier = iapManager.GetCustomerRichMultiplier();
             float totalPayment = basePayment * richMultiplier;
 
-            // Müşteri oluştur
-            Customer customer = new Customer(customerIdCounter++, requestedPackages, totalPayment);
-
-            // Görsel spawn
-            if (customerPrefab != null && queuePositions != null && customerQueue.Count < queuePositions.Length)
-            {
-                Vector3 spawnPos = spawnPoint != null ? spawnPoint.position : queuePositions[customerQueue.Count].position;
-                GameObject customerObj = Instantiate(customerPrefab, spawnPos, Quaternion.identity);
-                customer.gameObject = customerObj;
-
-                // Müşteriyi kuyruğa götür
-                MoveCustomerToQueue(customer, customerQueue.Count);
-            }
+            Customer customer = new Customer(customerIdCounter++, requestedBottles, totalPayment);
+            customer.controller = controller;
 
             customerQueue.Add(customer);
             MilkFarmEvents.CustomerSpawned();
 
-            Debug.Log($"[CustomerManager] Müşteri #{customer.id} spawn edildi. Talep: {requestedPackages} paket, Ödeme: {totalPayment}");
+            UpdateQueuePositions();
+
+            controller.SetRequestedBottles(requestedBottles);
+
+            Debug.Log($"[CustomerManager] Müşteri #{customer.id} kuyruğa katıldı. Talep: {requestedBottles} şişe");
         }
 
-        /// <summary>
-        /// Müşteriyi kuyruk pozisyonuna götür
-        /// </summary>
-        private void MoveCustomerToQueue(Customer customer, int queueIndex)
+        // YENİ: Şişe bazlı
+        public void ServeBottleToCustomer()
         {
-            if (customer.gameObject == null || queuePositions == null || queueIndex >= queuePositions.Length) return;
-
-            // Basit pozisyon ataması (NavMesh entegrasyonu için CustomerController kullanılabilir)
-            customer.gameObject.transform.position = queuePositions[queueIndex].position;
-            customer.gameObject.transform.rotation = queuePositions[queueIndex].rotation;
-        }
-
-        /// <summary>
-        /// Müşteriye paket servis et
-        /// PackageManager tarafından çağrılır
-        /// </summary>
-        public void ServePackageToCustomer()
-        {
-            if (customerQueue.Count == 0) return;
+            if (customerQueue.Count == 0)
+            {
+                Debug.LogWarning("[CustomerManager] Kuyrukta müşteri yok!");
+                return;
+            }
 
             Customer currentCustomer = customerQueue[0];
-            currentCustomer.remainingPackages--;
 
-            Debug.Log($"[CustomerManager] Müşteri #{currentCustomer.id}'ye paket verildi. Kalan: {currentCustomer.remainingPackages}");
+            if (currentCustomer.controller != null && !currentCustomer.controller.isReadyToBuy)
+            {
+                Debug.LogWarning("[CustomerManager] Müşteri hazır değil!");
+                return;
+            }
 
-            // Müşteri siparişini tamamladı mı?
+            currentCustomer.remainingBottles--;
+
+            if (currentCustomer.controller != null)
+            {
+                currentCustomer.controller.GiveBottle();
+            }
+
+            Debug.Log($"[CustomerManager] Şişe verildi. Kalan: {currentCustomer.remainingBottles}/{currentCustomer.requestedBottles}");
+
             if (currentCustomer.IsServed)
             {
                 CompleteCustomerOrder(currentCustomer);
             }
         }
 
-        /// <summary>
-        /// Müşteri siparişini tamamla
-        /// </summary>
+        // ESKİ: Geriye uyumluluk (AutoWorker için)
+        public void ServePackageToCustomer()
+        {
+            ServeBottleToCustomer();
+        }
+
         private void CompleteCustomerOrder(Customer customer)
         {
-            // Para öde
-            moneyManager.EarnMoney(customer.totalPayment);
+            Vector3 salePosition = customer.controller != null
+                ? customer.controller.transform.position
+                : transform.position;
+
+            moneyManager.EarnMoney(customer.totalPayment, salePosition);
             MilkFarmEvents.CustomerServed(customer.totalPayment);
 
             Debug.Log($"[CustomerManager] Müşteri #{customer.id} tamamlandı! Ödeme: {customer.totalPayment}");
 
-            // Müşteriyi kuyruktan çıkar
+            if (customer.controller != null)
+            {
+                customer.controller.CompletePurchase();
+            }
+
             customerQueue.Remove(customer);
-
-            // Görsel çıkart
-            if (customer.gameObject != null)
-            {
-                // Exit animasyonu
-                MoveCustomerToExit(customer);
-            }
-
-            // Kuyruktaki diğer müşterileri ileri kaydır
             UpdateQueuePositions();
-
-            // Yeni müşteri spawn et
-            SpawnCustomer();
         }
 
-        /// <summary>
-        /// Müşteriyi çıkışa götür ve destroy et
-        /// </summary>
-        private void MoveCustomerToExit(Customer customer)
-        {
-            if (customer.gameObject == null) return;
-
-            // Basit çözüm: Anında destroy
-            // TODO: NavMesh ile çıkışa götür, sonra destroy
-            if (exitPoint != null)
-            {
-                customer.gameObject.transform.position = exitPoint.position;
-            }
-            
-            Destroy(customer.gameObject, 0.5f);
-        }
-
-        /// <summary>
-        /// Kuyruk pozisyonlarını güncelle
-        /// </summary>
         private void UpdateQueuePositions()
         {
             for (int i = 0; i < customerQueue.Count; i++)
             {
-                MoveCustomerToQueue(customerQueue[i], i);
+                if (customerQueue[i].controller != null)
+                {
+                    Vector3 newPos = GetPositionForIndex(i);
+                    customerQueue[i].controller.UpdateQueuePosition(newPos);
+                }
             }
         }
 
-        // === PUBLIC API ===
-
-        /// <summary>
-        /// Bekleyen müşteri var mı?
-        /// </summary>
-        public bool HasWaitingCustomer()
+        public Vector3 GetPositionForIndex(int index)
         {
-            return customerQueue.Count > 0;
+            if (queueStartPoint == null)
+            {
+                Debug.LogError("[CustomerManager] queueStartPoint null!");
+                return transform.position;
+            }
+
+            int row = index / 2;
+            int col = index % 2;
+
+            Vector3 targetPos = queueStartPoint.position +
+                               (queueStartPoint.forward * (-row * rowSpacing)) +
+                               (queueStartPoint.right * (col * colSpacing));
+
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(targetPos, out hit, 2.0f, NavMesh.AllAreas))
+            {
+                return hit.position;
+            }
+
+            return targetPos;
         }
 
-        /// <summary>
-        /// İlk müşteriyi al
-        /// </summary>
+        public void LeaveQueue(CustomerController controller)
+        {
+            Customer customer = customerQueue.Find(c => c.controller == controller);
+            if (customer != null)
+            {
+                customerQueue.Remove(customer);
+                UpdateQueuePositions();
+            }
+        }
+
+        public int GetQueueIndex(CustomerController controller)
+        {
+            Customer customer = customerQueue.Find(c => c.controller == controller);
+            return customer != null ? customerQueue.IndexOf(customer) : -1;
+        }
+
+        public bool HasWaitingCustomer()
+        {
+            if (customerQueue.Count == 0) return false;
+
+            Customer first = customerQueue[0];
+            if (first.controller != null)
+            {
+                return first.controller.isReadyToBuy;
+            }
+
+            return false;
+        }
+
         public Customer GetFirstCustomer()
         {
             return customerQueue.Count > 0 ? customerQueue[0] : null;
         }
 
-        /// <summary>
-        /// Kuyruk uzunluğu
-        /// </summary>
         public int GetQueueLength()
         {
             return customerQueue.Count;
         }
 
-        /// <summary>
-        /// Debug: Tüm müşterileri temizle
-        /// </summary>
         [ContextMenu("Debug: Clear All Customers")]
         public void DebugClearAllCustomers()
         {
             foreach (var customer in customerQueue)
             {
-                if (customer.gameObject != null)
+                if (customer.controller != null)
                 {
-                    Destroy(customer.gameObject);
+                    Destroy(customer.controller.gameObject);
                 }
             }
             customerQueue.Clear();
-            Debug.Log("[CustomerManager] Tüm müşteriler temizlendi!");
         }
 
-        /// <summary>
-        /// Debug: Kuyruğu doldur
-        /// </summary>
-        [ContextMenu("Debug: Fill Queue")]
-        public void DebugFillQueue()
+        [ContextMenu("Debug: Print Queue")]
+        public void DebugPrintQueue()
         {
-            FillQueue();
+            Debug.Log($"Kuyruk: {customerQueue.Count} müşteri");
+            for (int i = 0; i < customerQueue.Count; i++)
+            {
+                Debug.Log($"  [{i}] Müşteri #{customerQueue[i].id} - {customerQueue[i].remainingBottles}/{customerQueue[i].requestedBottles}");
+            }
         }
     }
 }

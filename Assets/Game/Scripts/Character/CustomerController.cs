@@ -1,51 +1,58 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.AI;
 using System.Collections;
+using MilkFarm;
+using Zenject;
+using TMPro;
 
 [RequireComponent(typeof(NavMeshAgent))]
 public class CustomerController : MonoBehaviour
 {
-    [Header("Bileþenler")]
+    [Inject] private CustomerManager customerManager;
+
+    [Header("BileÅŸenler")]
     public ModularCharacterManager appearanceManager;
     public GameObject purchasedIcon;
     private NavMeshAgent agent;
     private Animator animator;
 
-    [Header("Navigasyon Ayarlarý")]
+    [Header("Navigasyon")]
     public float stopThreshold = 0.2f;
 
-    private Transform exitPoint;
-    private CounterManager targetCounter;
-    private Vector3 currentTargetPos;
+    [Header("UI")]
+    [SerializeField] private GameObject packageTextParent;
+    [SerializeField] private TextMeshProUGUI packageCountText;
 
+    private Transform exitPoint;
+    private Vector3 currentTargetPos;
     public bool isReadyToBuy = false;
 
     private enum State { Spawning, MovingToQueue, WaitingInQueue, WalkingToExit }
     private State currentState;
+
+    private int requestedBottles;
+    private int givenBottles; // KaÃ§ ÅŸiÅŸe verildi
 
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         if (appearanceManager == null) appearanceManager = GetComponent<ModularCharacterManager>();
-
         if (agent != null)
         {
             agent.stoppingDistance = 0f;
             agent.autoBraking = false;
             agent.angularSpeed = 360f;
             agent.acceleration = 20f;
-            agent.speed = 3.5f; // Hýzýn 0 olmadýðýndan emin olalým
+            agent.speed = 3.5f;
         }
     }
 
-    public void Initialize(Transform counter, Transform exit, Gender genderPref, SkinType skinPref)
+    public void Initialize(Transform exit, Gender genderPref, SkinType skinPref)
     {
         exitPoint = exit;
         if (appearanceManager != null) appearanceManager.BuildCharacter(genderPref, skinPref);
 
-        // --- 1. NAVMESH FIX ---
-        // Agent'ý kapatýp açmak bazen NavMesh'e oturmasýný garanti eder
         if (agent != null)
         {
             agent.enabled = false;
@@ -53,33 +60,81 @@ public class CustomerController : MonoBehaviour
             agent.enabled = true;
         }
 
-        // --- 2. MASAYI BULMA (Senin þüphelendiðin kýsým) ---
-        targetCounter = counter.GetComponent<CounterManager>();
-        if (targetCounter == null) targetCounter = counter.GetComponentInParent<CounterManager>();
-        if (targetCounter == null) targetCounter = counter.GetComponentInChildren<CounterManager>();
-
-        if (targetCounter != null)
+        if (customerManager != null)
         {
-            // Debug: Masayý bulduðunu konsola yazsýn
-            Debug.Log($"Masa Bulundu: {targetCounter.name}. Sýraya giriliyor...");
-
-            targetCounter.JoinQueue(this);
-
-            Vector3 queuePos = targetCounter.GetPositionForIndex(targetCounter.GetQueueIndex(this));
+            customerManager.JoinQueue(this);
+            Vector3 queuePos = customerManager.GetPositionForIndex(customerManager.GetQueueIndex(this));
             MoveTo(queuePos);
             currentState = State.MovingToQueue;
         }
         else
         {
-            Debug.LogError("KRÝTÝK HATA: Müþteri CounterManager scriptini bulamadý! Spawner'a sürüklediðin objeyi kontrol et.");
+            Debug.LogError("[CustomerController] CustomerManager inject edilmedi!");
+        }
+    }
+
+    /// <summary>
+    /// Talep ayarla (baÅŸlangÄ±Ã§)
+    /// </summary>
+    public void SetRequestedBottles(int bottles)
+    {
+        requestedBottles = bottles;
+        givenBottles = 0; // BaÅŸlangÄ±Ã§ta 0
+        UpdateUI();
+    }
+
+    /// <summary>
+    /// Bir ÅŸiÅŸe verildi
+    /// </summary>
+    public void GiveBottle()
+    {
+        givenBottles++;
+        UpdateUI();
+    }
+
+    /// <summary>
+    /// TamamlandÄ± mÄ±?
+    /// </summary>
+    public bool IsOrderComplete()
+    {
+        return givenBottles >= requestedBottles;
+    }
+
+    /// <summary>
+    /// KaÃ§ ÅŸiÅŸe daha gerekiyor?
+    /// </summary>
+    public int GetRemainingBottles()
+    {
+        return requestedBottles - givenBottles;
+    }
+
+    private void UpdateUI()
+    {
+        if (packageCountText != null)
+        {
+            // 4/0 â†’ 4/1 â†’ 4/2 â†’ 4/3 â†’ 4/4
+            packageCountText.text = $"{requestedBottles}/{givenBottles}";
+        }
+
+        if (IsOrderComplete())
+        {
+            if (packageTextParent != null)
+            {
+                packageTextParent.SetActive(false);
+            }
+        }
+        else
+        {
+            if (packageTextParent != null)
+            {
+                packageTextParent.SetActive(true);
+            }
         }
     }
 
     public void UpdateQueuePosition(Vector3 newPos)
     {
         if (currentState == State.WalkingToExit) return;
-
-        // Yükseklik farkýný yok sayarak mesafe ölç (Flat Distance)
         if (GetFlatDistance(transform.position, newPos) > 0.1f)
         {
             MoveTo(newPos);
@@ -94,15 +149,7 @@ public class CustomerController : MonoBehaviour
         if (agent != null && agent.isOnNavMesh)
         {
             agent.isStopped = false;
-
-            // Hedefe gidilebilir mi kontrol et?
-            bool pathFound = agent.SetDestination(currentTargetPos);
-
-            if (!pathFound)
-            {
-                Debug.LogWarning("NavMesh bu hedefe yol bulamadý! Hedef NavMesh dýþýnda olabilir.");
-            }
-
+            agent.SetDestination(currentTargetPos);
             if (animator) animator.SetBool("isWalking", true);
         }
     }
@@ -124,32 +171,28 @@ public class CustomerController : MonoBehaviour
 
         if (currentState == State.MovingToQueue)
         {
-            // --- 3. DÜZELTME: YÜKSEKLÝK FARKINI YOK SAY ---
-            // Karakterin kafasý ile yerdeki nokta arasýndaki mesafeyi ölçmemesi için Y'leri sýfýrlýyoruz.
             float dist = GetFlatDistance(transform.position, currentTargetPos);
-
             if (dist <= stopThreshold)
             {
                 StopMovement();
                 currentState = State.WaitingInQueue;
-
-                if (targetCounter.GetQueueIndex(this) == 0)
+                if (customerManager != null && customerManager.GetQueueIndex(this) == 0)
                 {
                     isReadyToBuy = true;
+                    Debug.Log("[CustomerController] Ä°lk sÄ±radayÄ±m, hazÄ±rÄ±m!");
                 }
             }
-            else
+            else if (agent.velocity.sqrMagnitude < 0.1f && dist > 1.0f)
             {
-                // Ekstra Güvenlik: Hedefte deðiliz ama durmuþuz? (Takýlma Önleyici)
-                if (agent.velocity.sqrMagnitude < 0.1f && dist > 1.0f)
-                {
-                    agent.SetDestination(currentTargetPos);
-                }
+                agent.SetDestination(currentTargetPos);
             }
         }
         else if (currentState == State.WaitingInQueue)
         {
-            RotateTowards(targetCounter.transform.position);
+            if (customerManager != null && customerManager.queueStartPoint != null)
+            {
+                RotateTowards(customerManager.queueStartPoint.position);
+            }
 
             if (GetFlatDistance(transform.position, currentTargetPos) > 0.5f)
             {
@@ -167,7 +210,6 @@ public class CustomerController : MonoBehaviour
         }
     }
 
-    // Yükseklik farkýný önemsemeyen mesafe ölçer
     float GetFlatDistance(Vector3 a, Vector3 b)
     {
         a.y = 0;
@@ -185,12 +227,16 @@ public class CustomerController : MonoBehaviour
         if (animator) animator.SetTrigger("Buy");
         if (purchasedIcon != null) purchasedIcon.SetActive(true);
 
+        if (packageTextParent != null)
+        {
+            packageTextParent.SetActive(false);
+        }
+
         yield return new WaitForSeconds(0.5f);
 
-        targetCounter.LeaveQueue(this);
-
+        if (customerManager != null) customerManager.LeaveQueue(this);
         currentState = State.WalkingToExit;
-        MoveTo(exitPoint.position);
+        if (exitPoint != null) MoveTo(exitPoint.position);
     }
 
     void RotateTowards(Vector3 target)

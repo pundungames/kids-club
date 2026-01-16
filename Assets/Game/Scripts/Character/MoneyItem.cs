@@ -1,24 +1,15 @@
+using MilkFarm;
 using UnityEngine;
 
 public class MoneyItem : MonoBehaviour
 {
-    private CounterManager manager;
-
-    // Manager bu parayý yaratýrken kendini buraya tanýtacak
-    public void Initialize(CounterManager managerRef)
-    {
-        manager = managerRef;
-    }
+    public MoneyManager moneyManager;
 
     void OnMouseDown()
     {
-        if (manager != null)
+        if (moneyManager != null)
         {
-            // Manager'a haber ver: "Beni listeden düþ"
-            manager.OnMoneyCollected(this);
+            moneyManager.OnTableClicked();
         }
-
-        // Efektli yok olma (Opsiyonel: Ses veya partikül eklenebilir)
-        Destroy(gameObject);
     }
 }

@@ -12,22 +12,19 @@ namespace MilkFarm
     /// </summary>
     public class CowController : MonoBehaviour
     {
-        [Header("Bağlantılar")]
-        [SerializeField] private CounterManager counterManager; // Eski sistem için (backward compat)
-        [SerializeField] private PackageManager packageManager; // Yeni sistem için
-        
-        [Header("Yalaklar")]
-        [SerializeField] private TroughController feedTrough;  // Yemlik
-        [SerializeField] private TroughController waterTrough; // Suluk
+        // Private fields - runtime'da atanacak
+        private PackageManager packageManager;
+        private TroughController feedTrough;
+        private TroughController waterTrough;
 
         [Header("Görsel Ayarlar")]
         [SerializeField] private Image progressBar;
         [SerializeField] private GameObject timerCanvas;
-        [SerializeField] private GameObject milkIndicator; // Süt ikonu
-        [SerializeField] private GameObject needsIndicator; // Yem/su eksik ikonu
+        [SerializeField] private GameObject milkIndicator;
+        [SerializeField] private GameObject needsIndicator;
 
         [Header("Üretim Ayarları")]
-        [SerializeField] private int productionBatchSize = 3; // Kaç süt üretilecek
+        [SerializeField] private int productionBatchSize = 3;
         [SerializeField] private float baseTimePerMilk = 30f;
 
         // Tap & Hold
@@ -36,9 +33,29 @@ namespace MilkFarm
 
         // Yeni sistem entegrasyonu
         private int cowIndex = -1;
-        private Cow cowData; // CowManager'dan inject edilecek
+        private Cow cowData;
         private GameConfig config;
         private IAPManager iapManager;
+
+        // === PUBLIC SETTER METHODLARI ===
+
+        /// <summary>
+        /// CowManager tarafından runtime'da atanır
+        /// </summary>
+        public void SetFeedTrough(TroughController trough)
+        {
+            feedTrough = trough;
+        }
+
+        public void SetWaterTrough(TroughController trough)
+        {
+            waterTrough = trough;
+        }
+
+        public void SetPackageManager(PackageManager manager)
+        {
+            packageManager = manager;
+        }
 
         /// <summary>
         /// CowManager tarafından setup edilir
@@ -54,6 +71,8 @@ namespace MilkFarm
             if (timerCanvas != null) timerCanvas.SetActive(false);
             if (milkIndicator != null) milkIndicator.SetActive(false);
             if (needsIndicator != null) needsIndicator.SetActive(false);
+
+            Debug.Log($"[CowController {cowIndex}] Initialize edildi. FeedTrough: {feedTrough != null}, WaterTrough: {waterTrough != null}");
         }
 
         // === INPUT SİSTEMİ ===
@@ -89,6 +108,7 @@ namespace MilkFarm
             if (feedTrough == null || waterTrough == null)
             {
                 Debug.LogError($"[CowController {cowIndex}] Yemlik veya Suluk bağlanmamış!");
+                ShowNeedsIndicator(true);
                 return;
             }
 
@@ -121,20 +141,26 @@ namespace MilkFarm
                 while (timer < productionTime)
                 {
                     // Yem/su kontrolü (üretim sırasında biterse dur)
-                    if (!feedTrough.HasResource || !waterTrough.HasResource)
+                    if (feedTrough != null && waterTrough != null)
                     {
-                        ShowNeedsIndicator(true);
-                        isProducing = false;
-                        if (timerCanvas != null) timerCanvas.SetActive(false);
-                        yield break;
+                        if (!feedTrough.HasResource || !waterTrough.HasResource)
+                        {
+                            ShowNeedsIndicator(true);
+                            isProducing = false;
+                            if (timerCanvas != null) timerCanvas.SetActive(false);
+                            yield break;
+                        }
                     }
 
                     // Tap & Hold hızlandırma
-                    float speedMultiplier = isHolding ? config.tapHoldSpeedMultiplier : 1.0f;
+                    float speedMultiplier = isHolding && config != null
+                        ? config.tapHoldSpeedMultiplier
+                        : (isHolding ? 0.75f : 1.0f);
+
                     timer += Time.deltaTime * speedMultiplier;
 
                     // Progress bar güncelle
-                    if (progressBar != null) 
+                    if (progressBar != null)
                         progressBar.fillAmount = timer / productionTime;
 
                     yield return null;
@@ -179,12 +205,6 @@ namespace MilkFarm
         /// </summary>
         private void ProduceMilk()
         {
-            // Eski sistem için backward compat
-            if (counterManager != null)
-            {
-                counterManager.AddMilk(transform.position);
-            }
-
             // Yeni sistem
             if (packageManager != null)
             {
@@ -195,7 +215,7 @@ namespace MilkFarm
             if (cowData != null)
             {
                 cowData.currentMilk++;
-                
+
                 // Storage limit kontrolü
                 int storageLimit = GetStorageLimit();
                 if (cowData.currentMilk >= storageLimit)
@@ -250,7 +270,7 @@ namespace MilkFarm
             {
                 int collected = cowData.currentMilk;
                 cowData.currentMilk = 0;
-                
+
                 if (packageManager != null)
                 {
                     packageManager.AddMilk(collected);
@@ -258,7 +278,7 @@ namespace MilkFarm
 
                 ShowMilkIndicator(false);
                 MilkFarmEvents.CowMilkCollected(cowIndex, collected);
-                
+
                 Debug.Log($"[CowController {cowIndex}] {collected} süt toplandı!");
             }
         }

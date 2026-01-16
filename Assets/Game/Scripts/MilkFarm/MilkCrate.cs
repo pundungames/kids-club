@@ -1,45 +1,34 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System;
+using System.Collections.Generic;
 
 public class MilkCrate : MonoBehaviour
 {
-    [Header("Kasa Ayarlarý")]
-    public Transform[] milkSlots;
+    [Header("Kasa AyarlarÄ±")]
+    public Transform[] milkSlots; // 6 slot
 
-    // Ulaþan (Görünen) Süt Sayýsý
+    private List<GameObject> spawnedBottles = new List<GameObject>(); // Spawn edilen ÅŸiÅŸeler
     private int landedMilkCount = 0;
-
-    // Havada Olan + Ulaþan Toplam Süt (Mantýksal Sayý)
     private int targetMilkCount = 0;
 
     public float bottleScale = 0.8f;
 
-    // Kasa tamamen doldu mu? (Hareket için buna bakacaðýz)
     public bool IsPhysicallyFull => landedMilkCount >= milkSlots.Length;
-
-    // Süt gelecek yer kaldý mý? (Ýnek týklamasý için buna bakacaðýz)
     public bool HasSpace => targetMilkCount < milkSlots.Length;
+    public int CurrentBottleCount => landedMilkCount; // KaÃ§ ÅŸiÅŸe var
 
     void Start()
     {
-        // Baþlangýçta boþsa gizle (Hayalet Modu)
         if (landedMilkCount == 0) ToggleVisuals(false);
     }
 
-    // --- SÜT EKLEME ---
-    // Action onFull: Kasa fiziksel olarak dolduðunda Manager'a haber verecek
     public void AddMilkToCrate(GameObject milkPrefab, Vector3 startPos, Action onFull)
     {
-        // Eðer yer yoksa iþlem yapma
         if (!HasSpace) return;
 
-        // 1. Hemen görünür yap (Ýlk süt yola çýktý)
         if (targetMilkCount == 0) ToggleVisuals(true);
 
-        // 2. Hedef slotu belirle
         Transform targetSlot = milkSlots[targetMilkCount];
-
-        // 3. Mantýksal sayýyý artýr (Artýk buraya baþka süt gelemez)
         targetMilkCount++;
 
         if (milkPrefab != null)
@@ -49,31 +38,81 @@ public class MilkCrate : MonoBehaviour
             FlyingItem flyer = newMilk.GetComponent<FlyingItem>();
             if (flyer == null) flyer = newMilk.AddComponent<FlyingItem>();
 
-            // Uçuþ Hýzý (Daha hýzlý varsýn ki bekletmesin)
-            // FlyingItem scriptinde hýzý public yapmadýysan burasý standart çalýþýr.
-
             flyer.FlyTo(targetSlot.position, () =>
             {
-                // --- SÜT YERÝNE VARDIÐINDA ---
                 if (newMilk != null)
                 {
                     newMilk.transform.SetParent(targetSlot);
                     newMilk.transform.localPosition = Vector3.zero;
                     newMilk.transform.localRotation = Quaternion.identity;
                     newMilk.transform.localScale = Vector3.one * bottleScale;
+
+                    // Listeye ekle
+                    spawnedBottles.Add(newMilk);
                 }
 
-                // Fiziksel sayacý artýr
                 landedMilkCount++;
 
-                // Eðer son süt de indiyse ve kasa tamamen dolduysa
                 if (IsPhysicallyFull)
                 {
-                    // Manager'a haber ver: "Ben hazýrým, beni uçur!"
                     onFull?.Invoke();
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Kasadan bir ÅŸiÅŸe Ã§Ä±kar (gÃ¶rsel olarak)
+    /// </summary>
+    public bool RemoveOneBottle()
+    {
+        if (spawnedBottles.Count == 0)
+        {
+            Debug.LogWarning("[MilkCrate] Kasada ÅŸiÅŸe yok!");
+            return false;
+        }
+
+        // Son ÅŸiÅŸeyi al (LIFO - Last In First Out)
+        GameObject lastBottle = spawnedBottles[spawnedBottles.Count - 1];
+        spawnedBottles.RemoveAt(spawnedBottles.Count - 1);
+
+        // Yok et
+        if (lastBottle != null)
+        {
+            Destroy(lastBottle);
+        }
+
+        landedMilkCount--;
+        targetMilkCount--;
+
+        Debug.Log($"[MilkCrate] ÅžiÅŸe Ã§Ä±karÄ±ldÄ±. Kalan: {landedMilkCount}");
+
+        // Kasa boÅŸaldÄ±ysa gizle
+        if (landedMilkCount <= 0)
+        {
+            ToggleVisuals(false);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Kasadaki tÃ¼m ÅŸiÅŸeleri temizle
+    /// </summary>
+    public void ClearAllBottles()
+    {
+        foreach (var bottle in spawnedBottles)
+        {
+            if (bottle != null)
+            {
+                Destroy(bottle);
+            }
+        }
+
+        spawnedBottles.Clear();
+        landedMilkCount = 0;
+        targetMilkCount = 0;
+        ToggleVisuals(false);
     }
 
     public void ToggleVisuals(bool isActive)
