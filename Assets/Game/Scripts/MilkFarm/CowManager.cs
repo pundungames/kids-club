@@ -1,6 +1,6 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using Zenject;
 
 namespace MilkFarm
@@ -14,11 +14,14 @@ namespace MilkFarm
         public int index;
         public bool isUnlocked;
         public int level;
-        public int currentMilk; // Üretilen süt (envanter)
-        public float productionTimer; // Kalan süre
-        public bool isBoosted; // Tap & Hold aktif mi?
-        public Transform transform; // İnek objesi
-        public GameObject milkIndicator; // Süt icon UI
+        public int currentMilk;
+        public float productionTimer;
+        public bool isBoosted;
+
+        // Visual referanslar
+        public Transform transform;
+        public CowController controller;
+        public GameObject milkIndicator;
 
         public Cow(int idx)
         {
@@ -33,10 +36,11 @@ namespace MilkFarm
 
     /// <summary>
     /// Tüm inekleri yöneten merkezi manager
-    /// GDD v2'ye göre tam implementation
+    /// Mevcut CowController sistemi ile entegre edildi
     /// </summary>
     public class CowManager : MonoBehaviour
     {
+        [Inject] DiContainer container;
         [Inject] private GameConfig config;
         [Inject] private SaveManager saveManager;
         [Inject] private IAPManager iapManager;
@@ -50,8 +54,7 @@ namespace MilkFarm
         [SerializeField] private Transform[] cowSlots; // 12 slot
 
         [Header("UI Elemanları")]
-        [SerializeField] private GameObject milkIndicatorPrefab; // Süt icon prefab
-        [SerializeField] private GameObject needsIndicatorPrefab; // Yem/su eksik icon
+        [SerializeField] private GameObject milkIndicatorPrefab;
 
         private List<Cow> cows = new List<Cow>();
 
@@ -104,7 +107,7 @@ namespace MilkFarm
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            
+
             for (int i = 0; i < cows.Count; i++)
             {
                 saveData.cows[i].isUnlocked = cows[i].isUnlocked;
@@ -117,17 +120,41 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// İnek spawn etme
+        /// İnek spawn etme - CowController ile entegre
         /// </summary>
         private void SpawnCow(int index)
         {
             if (cowPrefab == null || cowSlots[index] == null) return;
 
             GameObject cowObj = Instantiate(cowPrefab, cowSlots[index].position, cowSlots[index].rotation, cowSlots[index]);
+            container.InjectGameObject(cowObj);
             cows[index].transform = cowObj.transform;
 
-            // Tap & Hold için event trigger ekle
-            AddTapHandlers(cowObj, index);
+            // CowController'ı al
+            CowController controller = cowObj.GetComponent<CowController>();
+            if (controller != null)
+            {
+                cows[index].controller = controller;
+
+                // İstasyon indexine göre yemlik/suluk referanslarını al
+                int stationIndex = index / config.cowsPerStation;
+                TroughController feedTrough = stationManager.GetFeedTrough(stationIndex);
+                TroughController waterTrough = stationManager.GetWaterTrough(stationIndex);
+
+                // Public SetTrough methodları ile ata (CowController'a ekleyeceğiz)
+                controller.SetFeedTrough(feedTrough);
+                controller.SetWaterTrough(waterTrough);
+                controller.SetPackageManager(packageManager);
+
+                // Initialize et
+                controller.Initialize(index, cows[index], config, iapManager);
+
+                Debug.Log($"[CowManager] İnek {index} spawn edildi. İstasyon: {stationIndex}, FeedTrough: {feedTrough != null}, WaterTrough: {waterTrough != null}");
+            }
+            else
+            {
+                Debug.LogError($"[CowManager] İnek prefab'ında CowController component'i bulunamadı!");
+            }
 
             // Süt indikatörü oluştur
             if (milkIndicatorPrefab != null)
@@ -139,167 +166,26 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// Tap & Hold input handler'ları ekle
+        /// Update döngüsü - CowController üretimi yönettiği için burada sadece monitoring
         /// </summary>
-        private void AddTapHandlers(GameObject cowObj, int cowIndex)
-        {
-            // Collider yoksa ekle
-            if (cowObj.GetComponent<Collider>() == null)
-            {
-                BoxCollider collider = cowObj.AddComponent<BoxCollider>();
-                collider.size = new Vector3(1f, 2f, 1f);
-                collider.center = new Vector3(0f, 1f, 0f);
-            }
-
-            EventTrigger trigger = cowObj.GetComponent<EventTrigger>();
-            if (trigger == null) trigger = cowObj.AddComponent<EventTrigger>();
-
-            // Pointer Down - Boost başlat
-            EventTrigger.Entry pointerDown = new EventTrigger.Entry();
-            pointerDown.eventID = EventTriggerType.PointerDown;
-            pointerDown.callback.AddListener((data) => { OnCowPointerDown(cowIndex); });
-            trigger.triggers.Add(pointerDown);
-
-            // Pointer Up - Boost bitir
-            EventTrigger.Entry pointerUp = new EventTrigger.Entry();
-            pointerUp.eventID = EventTriggerType.PointerUp;
-            pointerUp.callback.AddListener((data) => { OnCowPointerUp(cowIndex); });
-            trigger.triggers.Add(pointerUp);
-
-            // Pointer Exit - Boost bitir
-            EventTrigger.Entry pointerExit = new EventTrigger.Entry();
-            pointerExit.eventID = EventTriggerType.PointerExit;
-            pointerExit.callback.AddListener((data) => { OnCowPointerUp(cowIndex); });
-            trigger.triggers.Add(pointerExit);
-
-            // Click - Süt topla
-            EventTrigger.Entry pointerClick = new EventTrigger.Entry();
-            pointerClick.eventID = EventTriggerType.PointerClick;
-            pointerClick.callback.AddListener((data) => { OnCowClicked(cowIndex); });
-            trigger.triggers.Add(pointerClick);
-        }
-
-        private void OnCowPointerDown(int index)
-        {
-            if (!cows[index].isUnlocked) return;
-            cows[index].isBoosted = true;
-            Debug.Log($"[Cow {index}] Boost başlatıldı!");
-        }
-
-        private void OnCowPointerUp(int index)
-        {
-            if (!cows[index].isUnlocked) return;
-            cows[index].isBoosted = false;
-            Debug.Log($"[Cow {index}] Boost durduruldu!");
-        }
-
-        /// <summary>
-        /// İneğe tıklama - süt toplama
-        /// </summary>
-        private void OnCowClicked(int index)
-        {
-            Cow cow = cows[index];
-            if (!cow.isUnlocked) return;
-
-            // Süt varsa topla
-            if (cow.currentMilk > 0)
-            {
-                int collectedMilk = cow.currentMilk;
-                cow.currentMilk = 0;
-                cow.productionTimer = 0f; // Timer'ı sıfırla, yeniden üretime başlasın
-
-                // Paketleme istasyonuna gönder
-                packageManager.AddMilk(collectedMilk);
-
-                // UI güncelle
-                UpdateCowMilkIndicator(index);
-
-                MilkFarmEvents.CowMilkCollected(index, collectedMilk);
-                Debug.Log($"[Cow {index}] {collectedMilk} süt toplandı!");
-            }
-        }
-
         private void Update()
         {
-            UpdateAllCows(Time.deltaTime);
-        }
-
-        /// <summary>
-        /// Tüm ineklerin üretim döngüsünü güncelle
-        /// </summary>
-        private void UpdateAllCows(float deltaTime)
-        {
+            // İnek durumlarını monitoring et
             for (int i = 0; i < cows.Count; i++)
             {
                 Cow cow = cows[i];
-                if (!cow.isUnlocked) continue;
+                if (!cow.isUnlocked || cow.controller == null) continue;
 
-                // Süt envanteri dolu mu?
+                // Controller'dan mevcut süt miktarını sync et
+                cow.currentMilk = cow.controller.GetCurrentMilk();
+
+                // Storage limit kontrolü
                 int storageLimit = GetMilkStorageLimit();
                 if (cow.currentMilk >= storageLimit)
                 {
-                    // Envanter dolu, üretim durdu
                     UpdateCowMilkIndicator(i);
-                    continue;
-                }
-
-                // İstasyonu kontrol et
-                int stationIndex = i / config.cowsPerStation;
-                bool hasResources = stationManager.HasFoodAndWater(stationIndex);
-
-                if (!hasResources)
-                {
-                    // Yem veya su yok, üretim pause
-                    // Needs indikatörünü göster
-                    ShowNeedsIndicator(i, true);
-                    continue;
-                }
-                else
-                {
-                    ShowNeedsIndicator(i, false);
-                }
-
-                // Üretim süresini hesapla
-                float productionTime = CalculateCowProductionTime(cow);
-
-                // Timer'ı ilerlet
-                float speedFactor = cow.isBoosted ? config.tapHoldSpeedMultiplier : 1f;
-                cow.productionTimer += deltaTime * speedFactor;
-
-                // Süt üretildi mi?
-                if (cow.productionTimer >= productionTime)
-                {
-                    cow.productionTimer = 0f;
-                    cow.currentMilk++;
-
-                    MilkFarmEvents.CowMilkProduced(i);
-                    UpdateCowMilkIndicator(i);
-
-                    Debug.Log($"[Cow {i}] Süt üretildi! Toplam: {cow.currentMilk}/{storageLimit}");
                 }
             }
-        }
-
-        /// <summary>
-        /// İnek için üretim süresini hesapla (level ve IAP'e göre)
-        /// GDD Formül: cow_production_time(level) = max(10, base * (0.9 ^ (level - 1)))
-        /// </summary>
-        private float CalculateCowProductionTime(Cow cow)
-        {
-            // Base süre
-            float baseTime = config.baseMilkProductionTime;
-
-            // Level bonus: Her level %10 hızlandırma
-            float levelMultiplier = Mathf.Pow(0.9f, cow.level - 1);
-            float leveledTime = baseTime * levelMultiplier;
-
-            // Minimum limit
-            leveledTime = Mathf.Max(config.minProductionTime, leveledTime);
-
-            // IAP global speed boost
-            leveledTime *= iapManager.GetGlobalSpeedMultiplier();
-
-            return leveledTime;
         }
 
         /// <summary>
@@ -322,19 +208,6 @@ namespace MilkFarm
             {
                 bool shouldShow = cow.currentMilk > 0;
                 cow.milkIndicator.SetActive(shouldShow);
-            }
-        }
-
-        /// <summary>
-        /// Yem/su eksik indikatörünü göster/gizle
-        /// </summary>
-        private void ShowNeedsIndicator(int index, bool show)
-        {
-            // TODO: İnek üzerinde yem/su eksik ikonu göster
-            // Şimdilik log
-            if (show && Time.frameCount % 120 == 0) // Her 2 saniyede bir log
-            {
-                Debug.Log($"[Cow {index}] Yem veya su eksik!");
             }
         }
 
@@ -390,7 +263,6 @@ namespace MilkFarm
 
         /// <summary>
         /// İnek upgrade maliyeti
-        /// GDD Formül: base_cost * (multiplier ^ (level - 1))
         /// </summary>
         public float CalculateCowUpgradeCost(int currentLevel)
         {
@@ -410,6 +282,36 @@ namespace MilkFarm
             cows[index].currentMilk = actualAmount;
 
             UpdateCowMilkIndicator(index);
+        }
+
+        /// <summary>
+        /// İneğe tıklayarak süt toplama (Auto Worker için de kullanılır)
+        /// </summary>
+        public void CollectMilkFromCow(int index)
+        {
+            if (index < 0 || index >= cows.Count) return;
+
+            Cow cow = cows[index];
+            if (!cow.isUnlocked) return;
+
+            // CowController'ı kullan
+            if (cow.controller != null)
+            {
+                cow.controller.CollectMilk();
+            }
+            else
+            {
+                // Fallback: Direct collection
+                if (cow.currentMilk > 0)
+                {
+                    int collected = cow.currentMilk;
+                    cow.currentMilk = 0;
+
+                    packageManager.AddMilk(collected);
+                    UpdateCowMilkIndicator(index);
+                    MilkFarmEvents.CowMilkCollected(index, collected);
+                }
+            }
         }
 
         public List<Cow> GetAllCows() => cows;

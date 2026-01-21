@@ -1,24 +1,36 @@
 using UnityEngine;
+using MilkFarm;
+using Zenject;
 
+/// <summary>
+/// Masaya týklama handler - PackageManager'a baðlanýr
+/// Kasadaki ürünleri satar
+/// </summary>
 public class TableClicker : MonoBehaviour
 {
-    // Buraya CounterManager'ýn olduðu ana objeyi sürükleyeceksin
-    public CounterManager manager;
+    [Header("Manager Referanslarý")]
+    [Inject] PackageManager packageManager;
 
-    // Bu scriptin olduðu objede MUTLAKA Collider olmalý
     void OnMouseDown()
     {
-        if (manager != null)
+        if (packageManager != null)
         {
-            // Manager'daki satýþ fonksiyonunu tetikle
-            manager.SellProductToCustomer();
-
-            // Týklandýðýný anlamak için ufak bir log (Test için)
-            Debug.Log("Masaya Týklandý!");
+            Debug.Log("[TableClicker] Masaya týklandý! Satýþ deneniyor...");
+            packageManager.OnStationClicked();
         }
         else
         {
-            Debug.LogError("TableClicker scriptine Manager atanmamýþ!");
+            Debug.LogError("[TableClicker] PackageManager atanmamýþ!");
+        }
+    }
+
+    void OnValidate()
+    {
+        // Collider kontrolü
+        Collider col = GetComponent<Collider>();
+        if (col == null)
+        {
+            Debug.LogWarning("[TableClicker] Bu objeye Collider ekleyin! OnMouseDown çalýþmaz.");
         }
     }
 }

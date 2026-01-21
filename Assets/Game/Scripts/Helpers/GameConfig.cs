@@ -15,7 +15,7 @@ namespace MilkFarm
         
         [Tooltip("Her istasyon kaç ineğe bakar")]
         public int cowsPerStation = 4;
-
+         
         [Header("=== ÜRETİM ===")]
         [Tooltip("Temel süt üretim süresi (saniye)")]
         public float baseMilkProductionTime = 30f;

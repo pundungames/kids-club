@@ -12,13 +12,15 @@ namespace MilkFarm
     public class Station
     {
         public int index;
-        public float foodFill; // 0-1 arası
-        public float waterFill; // 0-1 arası
-        public float feedingTimer; // Boşalma timer'ı
-        public float wateringTimer; // Boşalma timer'ı
+        public float foodFill;
+        public float waterFill;
+        public float feedingTimer;
+        public float wateringTimer;
+
+        // Bu satırları ekleyin:
         public Transform transform;
-        public Transform feedTroughTransform;
-        public Transform waterTroughTransform;
+        public TroughController feedTroughController; // YENİ
+        public TroughController waterTroughController; // YENİ
 
         public Station(int idx)
         {
@@ -33,7 +35,6 @@ namespace MilkFarm
         public bool HasWater => waterFill > 0f;
         public bool HasFoodAndWater => HasFood && HasWater;
     }
-
     /// <summary>
     /// Yemlik ve Suluk sistemini yöneten manager
     /// GDD v2'ye göre tam implementation
@@ -48,8 +49,8 @@ namespace MilkFarm
         [SerializeField] private Transform[] stationSlots; // 3 istasyon
 
         [Header("Yemlik ve Suluk Referansları")]
-        [SerializeField] private Transform[] feedTroughs; // 3 yemlik
-        [SerializeField] private Transform[] waterTroughs; // 3 suluk
+        [SerializeField] private TroughController[] feedTroughs; // 3 yemlik
+        [SerializeField] private TroughController[] waterTroughs; // 3 suluk
 
         [Header("UI Progress Bars (Opsiyonel)")]
         [SerializeField] private GameObject feedProgressBarPrefab;
@@ -69,8 +70,11 @@ namespace MilkFarm
 
         private void InitializeStations()
         {
+            // 12 inek / 3 inek per station = 4 istasyon
             int stationCount = Mathf.CeilToInt((float)config.maxCowSlots / config.cowsPerStation);
-            
+
+            Debug.Log($"[StationManager] İstasyon sayısı: {stationCount}"); // 4 olmalı
+
             for (int i = 0; i < stationCount; i++)
             {
                 Station station = new Station(i);
@@ -81,22 +85,23 @@ namespace MilkFarm
                     station.transform = stationSlots[i];
                 }
 
-                if (i < feedTroughs.Length)
+                // Yemlik controller ata
+                if (feedTroughs != null && i < feedTroughs.Length && feedTroughs[i] != null)
                 {
-                    station.feedTroughTransform = feedTroughs[i];
-                    AddTapHandler(feedTroughs[i].gameObject, i, true);
+                    station.feedTroughController = feedTroughs[i];
+                    station.feedTroughController.Initialize(i, true, config, iapManager);
                 }
 
-                if (i < waterTroughs.Length)
+                // Suluk controller ata
+                if (waterTroughs != null && i < waterTroughs.Length && waterTroughs[i] != null)
                 {
-                    station.waterTroughTransform = waterTroughs[i];
-                    AddTapHandler(waterTroughs[i].gameObject, i, false);
+                    station.waterTroughController = waterTroughs[i];
+                    station.waterTroughController.Initialize(i, false, config, iapManager);
                 }
             }
 
             Debug.Log($"[StationManager] {stations.Count} istasyon başlatıldı.");
         }
-
         /// <summary>
         /// Tap handler ekle (yemlik veya suluk için)
         /// </summary>
@@ -167,7 +172,23 @@ namespace MilkFarm
 
             Debug.Log($"[Station {stationIndex}] Suluk dolduruldu! Doluluk: {station.waterFill * 100}%");
         }
+        /// <summary>
+        /// İstasyonun yemlik controller'ını al
+        /// </summary>
+        public TroughController GetFeedTrough(int stationIndex)
+        {
+            if (stationIndex < 0 || stationIndex >= stations.Count) return null;
+            return stations[stationIndex].feedTroughController;
+        }
 
+        /// <summary>
+        /// İstasyonun suluk controller'ını al
+        /// </summary>
+        public TroughController GetWaterTrough(int stationIndex)
+        {
+            if (stationIndex < 0 || stationIndex >= stations.Count) return null;
+            return stations[stationIndex].waterTroughController;
+        }
         /// <summary>
         /// Save data'dan verileri yükle
         /// </summary>
@@ -218,7 +239,7 @@ namespace MilkFarm
         private void UpdateAllStations(float deltaTime)
         {
             // Auto Feeder IAP varsa tüm istasyonları dolu tut
-            if (iapManager.HasAutoFeeder())
+            if (iapManager != null && iapManager.HasAutoFeeder())
             {
                 for (int i = 0; i < stations.Count; i++)
                 {
@@ -325,7 +346,7 @@ namespace MilkFarm
         public void ProcessOfflineTime(float offlineSeconds)
         {
             // Auto Feeder varsa hiçbir şey yapma
-            if (iapManager.HasAutoFeeder()) return;
+            if (iapManager != null && iapManager.HasAutoFeeder()) return;
 
             for (int i = 0; i < stations.Count; i++)
             {

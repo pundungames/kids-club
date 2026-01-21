@@ -9,7 +9,7 @@ namespace MilkFarm
     /// </summary>
     public class SaveManager : MonoBehaviour
     {
-        private static SaveManager _instance;
+      /*  private static SaveManager _instance;
         public static SaveManager Instance
         {
             get
@@ -26,19 +26,19 @@ namespace MilkFarm
                 }
                 return _instance;
             }
-        }
+        }*/
 
         private const string SAVE_KEY = "MilkFarm_SaveData_v1";
         private MilkFarmSaveData _currentSaveData;
 
         private void Awake()
         {
-            if (_instance != null && _instance != this)
+            /*if (_instance != null && _instance != this)
             {
                 Destroy(gameObject);
                 return;
             }
-            _instance = this;
+            _instance = this;*/
             DontDestroyOnLoad(gameObject);
         }
 

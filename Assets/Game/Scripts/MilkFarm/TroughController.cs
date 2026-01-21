@@ -4,41 +4,37 @@ using Zenject;
 namespace MilkFarm
 {
     /// <summary>
-    /// Yemlik/Suluk controller'ı
-    /// Mevcut visual sistem korundu, GDD v2 parametreleri entegre edildi
+    /// Yemlik/Suluk controller - İNEK BAZLI TÜKETİM
+    /// İnek sayısına göre azalır
     /// </summary>
     public class TroughController : MonoBehaviour
     {
         [Header("Görsel Ayarlar")]
-        [SerializeField] private Transform fillMesh; // Yükselip alçalacak olan Yem/Su objesi
-        [SerializeField] private float loweredYOffset = -0.5f; // Boşken ne kadar aşağı insin?
+        [SerializeField] private Transform fillMesh;
+        [SerializeField] private float loweredYOffset = -0.5f;
+
+        [Header("UI İkon")]
+        [SerializeField] private GameObject emptyIcon;
 
         [Header("Tür")]
-        [SerializeField] private bool isFeedTrough = true; // true=Yemlik, false=Suluk
+        [SerializeField] private bool isFeedTrough = true;
 
         [Header("Durum")]
         [Range(0f, 1f)]
-        [SerializeField] private float currentFill = 1f; // 0=Boş, 1=Dolu (GDD: 0-1 arası)
+        [SerializeField] private float currentFill = 1f;
 
-        // Tüketim
-        private float drainTimer = 0f;
-        private float drainInterval = 30f; // GDD'den gelecek
-
-        // Başlangıç pozisyonlarını saklayalım
         private Vector3 initialLocalPos;
         private Vector3 initialScale;
+        private Vector3 loweredPos;
 
-        // GDD v2 entegrasyonu
+        // GDD v2
         private GameConfig config;
         private IAPManager iapManager;
         private int stationIndex = -1;
+        private int activeCowCount = 0; // Bu istasyondaki aktif inek sayısı
 
-        // İnek kontrolü için: İçinde bir şey var mı?
         public bool HasResource => currentFill > 0f;
 
-        /// <summary>
-        /// StationManager tarafından initialize edilir
-        /// </summary>
         public void Initialize(int station, bool isFeed, GameConfig gameConfig, IAPManager iap)
         {
             stationIndex = station;
@@ -46,30 +42,28 @@ namespace MilkFarm
             config = gameConfig;
             iapManager = iap;
 
-            // GDD'den interval al
-            drainInterval = isFeed ? config.feedingInterval : config.wateringInterval;
-
             if (fillMesh != null)
             {
                 initialLocalPos = fillMesh.localPosition;
                 initialScale = fillMesh.localScale;
+                loweredPos = initialLocalPos + new Vector3(0, loweredYOffset, 0);
                 UpdateVisuals();
             }
         }
 
         void Start()
         {
-            // Fallback config yoksa
-            if (config == null)
-            {
-                drainInterval = 30f;
-            }
-
             if (fillMesh != null)
             {
                 initialLocalPos = fillMesh.localPosition;
                 initialScale = fillMesh.localScale;
+                loweredPos = initialLocalPos + new Vector3(0, loweredYOffset, 0);
                 UpdateVisuals();
+            }
+
+            if (emptyIcon != null)
+            {
+                emptyIcon.SetActive(currentFill <= 0f);
             }
         }
 
@@ -81,77 +75,101 @@ namespace MilkFarm
                 if (currentFill < 1f)
                 {
                     currentFill = 1f;
-                    drainTimer = 0f;
                     UpdateVisuals();
                 }
-                return; // Auto feeder varsa tüketim yok
+                return;
             }
 
-            // Eğer içinde bir şey varsa zamanla azaldır
-            if (currentFill > 0f)
+            // İnek yoksa tüketim yok!
+            if (activeCowCount <= 0 || currentFill <= 0f)
             {
-                drainTimer += Time.deltaTime;
+                return;
+            }
 
-                // Süre dolunca boşal
-                if (drainTimer >= drainInterval)
-                {
-                    currentFill = 0f;
-                    drainTimer = 0f;
-                    UpdateVisuals();
+            // İnek bazlı tüketim hızı
+            // Her inek için drain rate hesapla
+            float drainInterval = isFeedTrough ? config.feedingInterval : config.wateringInterval;
+            float consumptionPerSecond = (1f / drainInterval) * activeCowCount; // İnek sayısı kadar hızlı
 
-                    // Event fırlat
-                    if (isFeedTrough)
-                        MilkFarmEvents.StationFoodDepleted(stationIndex);
-                    else
-                        MilkFarmEvents.StationWaterDepleted(stationIndex);
+            currentFill -= consumptionPerSecond * Time.deltaTime;
+            currentFill = Mathf.Max(0f, currentFill);
 
-                    Debug.Log($"[TroughController] {name} boşaldı!");
-                }
+            UpdateVisuals();
+
+            // Tam boşaldığında event fırlat (bir kere)
+            if (currentFill <= 0f)
+            {
+                OnDepleted();
             }
         }
 
-        // Tıklayınca Doldur (Clicker Mantığı)
+        private bool wasDepleted = false;
+
+        private void OnDepleted()
+        {
+            if (wasDepleted) return; // Zaten event fırlatıldı
+
+            wasDepleted = true;
+
+            if (isFeedTrough)
+                MilkFarmEvents.StationFoodDepleted(stationIndex);
+            else
+                MilkFarmEvents.StationWaterDepleted(stationIndex);
+
+            Debug.Log($"[TroughController] {name} boşaldı! (İnek sayısı: {activeCowCount})");
+        }
+
         void OnMouseDown()
         {
             FillTrough();
         }
 
-        /// <summary>
-        /// Yemlik/suluğu doldur
-        /// GDD: Her tap %25 doldurur (0.25)
-        /// </summary>
         public void FillTrough()
         {
-            if (currentFill >= 1f) return; // Zaten dolu
+            if (currentFill >= 1f) return;
 
-            float fillAmount = config != null 
+            float fillAmount = config != null
                 ? (isFeedTrough ? config.feedingTapFill : config.wateringTapFill)
-                : 0.25f; // Fallback
+                : 0.25f;
 
             currentFill = Mathf.Min(1f, currentFill + fillAmount);
-            drainTimer = 0f; // Timer'ı sıfırla ki hemen düşmesin
+            wasDepleted = false; // Reset flag
             UpdateVisuals();
 
-            // Event fırlat
             if (isFeedTrough)
                 MilkFarmEvents.StationFoodRefilled(stationIndex);
             else
                 MilkFarmEvents.StationWaterRefilled(stationIndex);
 
-            Debug.Log($"[TroughController] {name} dolduruldu: {currentFill * 100}%");
+            Debug.Log($"[TroughController] {name} dolduruldu: {currentFill * 100:F0}%");
         }
 
-        // === GÖRSEL ANİMASYON (SCALE + POZİSYON) ===
+        /// <summary>
+        /// İnek sayısını set et (CowManager'dan çağrılır)
+        /// </summary>
+        public void SetActiveCowCount(int count)
+        {
+            activeCowCount = count;
+            Debug.Log($"[TroughController] {name} - Aktif inek sayısı: {activeCowCount}");
+        }
+
         void UpdateVisuals()
         {
-            if (fillMesh == null) return;
+            if (fillMesh != null)
+            {
+                fillMesh.localPosition = Vector3.Lerp(loweredPos, initialLocalPos, currentFill);
 
-            // 1. SCALE AYARI: 0'dan Orijinal boyutuna
-            fillMesh.localScale = Vector3.Lerp(Vector3.zero, initialScale, currentFill);
+                fillMesh.localScale = Vector3.Lerp(
+                    new Vector3(initialScale.x, 0f, initialScale.z),
+                    initialScale,
+                    currentFill
+                );
+            }
 
-            // 2. POZİSYON AYARI: Aşağıdan Orijinal yerine
-            Vector3 emptyPos = initialLocalPos + new Vector3(0, loweredYOffset, 0);
-            fillMesh.localPosition = Vector3.Lerp(emptyPos, initialLocalPos, currentFill);
+            if (emptyIcon != null)
+            {
+                emptyIcon.SetActive(currentFill <= 0f);
+            }
         }
 
         // === PUBLIC API ===
@@ -161,41 +179,34 @@ namespace MilkFarm
         public void SetFillAmount(float amount)
         {
             currentFill = Mathf.Clamp01(amount);
+            wasDepleted = false;
             UpdateVisuals();
         }
 
-        /// <summary>
-        /// Offline progress için timer ayarla
-        /// </summary>
-        public void SetDrainTimer(float timer)
-        {
-            drainTimer = timer;
-        }
+        public int GetActiveCowCount() => activeCowCount;
 
-        public float GetDrainTimer() => drainTimer;
-
-        /// <summary>
-        /// Debug: Anında doldur
-        /// </summary>
         [ContextMenu("Debug: Fill Instantly")]
         public void DebugFillInstantly()
         {
             currentFill = 1f;
-            drainTimer = 0f;
+            wasDepleted = false;
             UpdateVisuals();
-            Debug.Log($"[TroughController] {name} anında dolduruldu!");
         }
 
-        /// <summary>
-        /// Debug: Anında boşalt
-        /// </summary>
         [ContextMenu("Debug: Empty Instantly")]
         public void DebugEmptyInstantly()
         {
             currentFill = 0f;
-            drainTimer = 0f;
             UpdateVisuals();
-            Debug.Log($"[TroughController] {name} anında boşaltıldı!");
+            OnDepleted();
+        }
+
+        [ContextMenu("Debug: Set 50%")]
+        public void DebugSet50Percent()
+        {
+            currentFill = 0.5f;
+            wasDepleted = false;
+            UpdateVisuals();
         }
     }
 }

@@ -1,229 +1,298 @@
 using UnityEngine;
-using UnityEngine.EventSystems;
 using Zenject;
+using System.Collections.Generic;
 
 namespace MilkFarm
 {
-    /// <summary>
-    /// Paketleme istasyonunu yöneten manager
-    /// Süt → Paket dönüşümü ve kapasite yönetimi
-    /// GDD v2'ye göre tam implementation
-    /// </summary>
     public class PackageManager : MonoBehaviour
     {
         [Inject] private GameConfig config;
         [Inject] private SaveManager saveManager;
+        [Inject] private MoneyManager moneyManager;
 
         [Header("Referanslar")]
         [SerializeField] private CustomerManager customerManager;
 
-        [Header("Paketleme İstasyonu")]
-        [SerializeField] private Transform packageStationTransform;
+        [Header("1. ÜRETİM ALANI")]
+        [SerializeField] private Transform caseSpawnPoint;
+        [SerializeField] private GameObject cratePrefab;
+        [SerializeField] private GameObject milkBottlePrefab;
 
-        [Header("UI (Opsiyonel)")]
-        [SerializeField] private GameObject packageVisualPrefab;
+        [Header("2. SATIŞ ALANI")]
+        [SerializeField] private Transform[] salesSlots;
 
-        private int milkPool; // Toplanan sütler
-        private int packageCount; // Oluşturulan paketler
-        private int capacityLevel; // Kapasite upgrade level'ı
-        private int currentCapacity; // Mevcut kapasite
+        private MilkCrate currentActiveCrate;
+        private MilkCrate[] salesSlotsContents;
+        private bool isProductionBusy = false;
+
+        private int capacityLevel = 1;
+        private int currentCapacity;
+
+        private void Awake()
+        {
+            if (salesSlots != null)
+            {
+                salesSlotsContents = new MilkCrate[salesSlots.Length];
+            }
+        }
 
         private void Start()
         {
             LoadFromSaveData();
-            SetupTapHandler();
+            UpdateCapacity();
+            SpawnNewCrate();
         }
 
-        /// <summary>
-        /// Paketleme istasyonuna tap handler ekle
-        /// </summary>
-        private void SetupTapHandler()
-        {
-            if (packageStationTransform == null) return;
-
-            // Collider yoksa ekle
-            if (packageStationTransform.GetComponent<Collider>() == null)
-            {
-                BoxCollider collider = packageStationTransform.gameObject.AddComponent<BoxCollider>();
-                collider.size = new Vector3(2f, 1f, 2f);
-            }
-
-            EventTrigger trigger = packageStationTransform.GetComponent<EventTrigger>();
-            if (trigger == null) trigger = packageStationTransform.gameObject.AddComponent<EventTrigger>();
-
-            EventTrigger.Entry pointerClick = new EventTrigger.Entry();
-            pointerClick.eventID = EventTriggerType.PointerClick;
-            pointerClick.callback.AddListener((data) => { OnPackageStationClicked(); });
-            trigger.triggers.Add(pointerClick);
-        }
-
-        /// <summary>
-        /// Paketleme istasyonuna tıklama - Müşteriye paket gönder
-        /// </summary>
-        private void OnPackageStationClicked()
-        {
-            // Paket var mı?
-            if (packageCount <= 0)
-            {
-                Debug.Log("[PackageManager] Satılacak paket yok!");
-                return;
-            }
-
-            // Müşteri var mı?
-            if (!customerManager.HasWaitingCustomer())
-            {
-                Debug.Log("[PackageManager] Bekleyen müşteri yok!");
-                return;
-            }
-
-            // 1 paket müşteriye gönder (instant)
-            packageCount--;
-            customerManager.ServePackageToCustomer();
-
-            MilkFarmEvents.PackageSold(packageCount);
-            UpdateVisuals();
-            SaveToData();
-
-            Debug.Log($"[PackageManager] 1 paket satıldı! Kalan: {packageCount}");
-        }
-
-        /// <summary>
-        /// Save data'dan verileri yükle
-        /// </summary>
         public void LoadFromSaveData()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            var packData = saveData.packaging;
-
-            milkPool = packData.milkPool;
-            packageCount = packData.packageCount;
-            capacityLevel = packData.capacityLevel;
-
+            capacityLevel = saveData.packaging.capacityLevel;
             UpdateCapacity();
-            UpdateVisuals();
-
-            Debug.Log($"[PackageManager] Yüklendi: {packageCount} paket, {milkPool} süt pool");
         }
 
-        /// <summary>
-        /// Mevcut durumu save data'ya kaydet
-        /// </summary>
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            saveData.packaging.milkPool = milkPool;
-            saveData.packaging.packageCount = packageCount;
             saveData.packaging.capacityLevel = capacityLevel;
-
             saveManager.SaveGame(saveData);
         }
 
-        /// <summary>
-        /// Kapasiteyi güncelle
-        /// </summary>
         private void UpdateCapacity()
         {
-            // GDD: base_capacity = 8, her level için artış
             currentCapacity = config.packageStationCapacityBase + (capacityLevel - 1) * 4;
         }
 
-        /// <summary>
-        /// İneklerden süt ekle
-        /// </summary>
+        private void SpawnNewCrate()
+        {
+            if (currentActiveCrate != null) return;
+            if (caseSpawnPoint == null || cratePrefab == null) return;
+
+            GameObject newCrateObj = Instantiate(cratePrefab, caseSpawnPoint.position, caseSpawnPoint.rotation);
+            currentActiveCrate = newCrateObj.GetComponent<MilkCrate>();
+
+            if (currentActiveCrate != null)
+            {
+                newCrateObj.transform.SetParent(caseSpawnPoint);
+                newCrateObj.transform.localScale = Vector3.one * 1.2f;
+            }
+
+            isProductionBusy = false;
+        }
+
         public void AddMilk(int amount)
         {
-            milkPool += amount;
-            MilkFarmEvents.MilkAddedToStation(milkPool);
-
-            // Paket oluşturma kontrolü
-            TryCreatePackages();
-
-            Debug.Log($"[PackageManager] {amount} süt eklendi. Pool: {milkPool}");
+            for (int i = 0; i < amount; i++)
+            {
+                AddMilk(caseSpawnPoint != null ? caseSpawnPoint.position : transform.position);
+            }
         }
 
-        /// <summary>
-        /// Paket oluşturma denemesi
-        /// GDD: 4 süt = 1 paket
-        /// </summary>
-        private void TryCreatePackages()
+        public void AddMilk(Vector3 milkStartPos)
         {
-            while (milkPool >= config.packageSize && packageCount < currentCapacity)
+            if (currentActiveCrate == null || !currentActiveCrate.HasSpace || isProductionBusy)
             {
-                milkPool -= config.packageSize;
-                packageCount++;
-
-                MilkFarmEvents.PackageCreated(packageCount);
-                UpdateVisuals();
-
-                Debug.Log($"[PackageManager] Yeni paket oluşturuldu! Toplam: {packageCount}/{currentCapacity}");
+                Debug.LogWarning("[PackageManager] Kasa dolu veya meşgul!");
+                return;
             }
 
-            // Kapasite doldu mu?
-            if (packageCount >= currentCapacity)
+            currentActiveCrate.AddMilkToCrate(milkBottlePrefab, milkStartPos, OnCrateFullyFilled);
+            MilkFarmEvents.MilkAddedToStation(0);
+        }
+
+        private void OnCrateFullyFilled()
+        {
+            TryMoveCrateToSales();
+        }
+
+        private void TryMoveCrateToSales()
+        {
+            if (currentActiveCrate == null || !currentActiveCrate.IsPhysicallyFull) return;
+
+            int emptySlotIndex = -1;
+            for (int i = 0; i < salesSlotsContents.Length; i++)
             {
+                if (salesSlotsContents[i] == null)
+                {
+                    emptySlotIndex = i;
+                    break;
+                }
+            }
+
+            if (emptySlotIndex != -1)
+            {
+                isProductionBusy = true;
+                Transform targetSlot = salesSlots[emptySlotIndex];
+                salesSlotsContents[emptySlotIndex] = currentActiveCrate;
+                MilkCrate movingCrate = currentActiveCrate;
+                currentActiveCrate = null;
+
+                FlyingItem flyer = movingCrate.gameObject.GetComponent<FlyingItem>();
+                if (flyer == null) flyer = movingCrate.gameObject.AddComponent<FlyingItem>();
+
+                flyer.FlyTo(targetSlot.position, () =>
+                {
+                    if (movingCrate != null)
+                    {
+                        movingCrate.transform.SetParent(targetSlot);
+                        movingCrate.transform.localPosition = Vector3.zero;
+                        movingCrate.transform.localRotation = Quaternion.Euler(0f, -90f, 0f);
+                        movingCrate.transform.localScale = Vector3.one * 0.6f;
+                    }
+
+                    MilkFarmEvents.PackageCreated(0);
+                    SaveToData();
+
+                    Debug.Log($"[PackageManager] Kasa satış alanına taşındı!");
+
+                    SpawnNewCrate();
+                });
+            }
+            else
+            {
+                Debug.LogWarning("[PackageManager] Satış slotları dolu!");
                 MilkFarmEvents.PackageStationFull();
-                Debug.Log($"[PackageManager] Paketleme istasyonu dolu! ({packageCount}/{currentCapacity})");
+            }
+        }
+
+        // === MÜŞTERİ BAZLI SATIŞ ===
+
+        public void OnStationClicked()
+        {
+            Debug.Log("[PackageManager] Masaya tıklandı! Müşteri bazlı satış...");
+            TrySellToCustomer();
+        }
+
+        /// <summary>
+        /// Müşteriye tamamını sat (tek tık)
+        /// </summary>
+        public bool TrySellToCustomer()
+        {
+            // Müşteri var mı?
+            if (customerManager == null || !customerManager.HasWaitingCustomer())
+            {
+                Debug.LogWarning("[PackageManager] Bekleyen müşteri yok!");
+                return false;
             }
 
-            SaveToData();
+            // İlk müşteriyi al
+            Customer firstCustomer = customerManager.GetFirstCustomer();
+            if (firstCustomer == null || firstCustomer.controller == null)
+            {
+                Debug.LogWarning("[PackageManager] Müşteri verisi bulunamadı!");
+                return false;
+            }
+
+            // Kaç şişe gerekiyor?
+            int needed = firstCustomer.controller.GetRemainingBottles();
+            Debug.Log($"[PackageManager] Müşteri {needed} şişe istiyor.");
+
+            // Kasalardan şişe çıkar
+            int given = 0;
+            for (int i = 0; i < salesSlotsContents.Length && given < needed; i++)
+            {
+                MilkCrate crate = salesSlotsContents[i];
+                if (crate == null) continue;
+
+                while (crate.CurrentBottleCount > 0 && given < needed)
+                {
+                    if (crate.RemoveOneBottle())
+                    {
+                        given++;
+
+                        // Müşteriye ver
+                        customerManager.ServeBottleToCustomer();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Kasa boşaldıysa yok et
+                if (crate.CurrentBottleCount <= 0)
+                {
+                    Debug.Log($"[PackageManager] Kasa {i} boşaldı, yok ediliyor.");
+                    Destroy(crate.gameObject);
+                    salesSlotsContents[i] = null;
+                }
+            }
+
+            Debug.Log($"[PackageManager] {given} şişe verildi.");
+
+            if (given > 0)
+            {
+                MilkFarmEvents.PackageSold(0);
+                SaveToData();
+                return true;
+            }
+
+            Debug.LogWarning("[PackageManager] Stokta yeterli şişe yok!");
+            return false;
         }
 
         /// <summary>
-        /// Görsel güncelleme
+        /// Toplam kaç şişe var?
         /// </summary>
-        private void UpdateVisuals()
+        public int GetTotalBottleCount()
         {
-            // TODO: Paket görsellerini güncelle
-            // Örnek: Paket sayısı kadar visual spawn et
+            int total = 0;
+            foreach (var crate in salesSlotsContents)
+            {
+                if (crate != null)
+                {
+                    total += crate.CurrentBottleCount;
+                }
+            }
+            return total;
         }
 
-        // === PUBLIC API ===
+        // === ESKİ API ===
 
-        /// <summary>
-        /// Kapasite upgrade'i (soft currency ile)
-        /// </summary>
-        public bool UpgradeCapacity(MoneyManager moneyManager)
+        public int GetCurrentPackageCount() => GetTotalBottleCount();
+        public int GetCurrentCapacity() => currentCapacity;
+        public bool HasPackages() => GetTotalBottleCount() > 0;
+        public bool HasBottles() => GetTotalBottleCount() > 0;
+        public int GetAvailableBottles() => GetTotalBottleCount();
+        public bool IsFull() => GetTotalBottleCount() >= currentCapacity;
+
+        public bool UpgradeCapacity(MoneyManager money)
         {
             float cost = CalculateCapacityUpgradeCost();
+            if (!money.CanAfford(cost)) return false;
 
-            if (!moneyManager.CanAfford(cost)) return false;
-
-            moneyManager.SpendMoney(cost);
+            money.SpendMoney(cost);
             capacityLevel++;
             UpdateCapacity();
 
             MilkFarmEvents.UpgradePurchased("PackageCapacity", capacityLevel, cost);
             SaveToData();
 
-            Debug.Log($"[PackageManager] Kapasite upgrade edildi! Yeni kapasite: {currentCapacity}");
+            Debug.Log($"[PackageManager] Kapasite upgrade! Yeni: {currentCapacity}");
             return true;
         }
 
-        /// <summary>
-        /// Kapasite upgrade maliyeti
-        /// GDD Formül: base_cost_depo * (cost_multiplier_depo ^ (level - 1))
-        /// </summary>
         public float CalculateCapacityUpgradeCost()
         {
             return config.baseCostDepo * Mathf.Pow(config.costMultiplierDepo, capacityLevel - 1);
         }
 
-        public int GetCurrentPackageCount() => packageCount;
-        public int GetCurrentCapacity() => currentCapacity;
-        public int GetMilkPool() => milkPool;
-        public bool IsFull() => packageCount >= currentCapacity;
-        public bool HasPackages() => packageCount > 0;
-
-        /// <summary>
-        /// Debug: Paket ekle
-        /// </summary>
-        [ContextMenu("Debug: Add 10 Packages")]
-        public void DebugAddPackages()
+        [ContextMenu("Debug: Add 10 Milk")]
+        public void DebugAddMilk()
         {
-            packageCount = Mathf.Min(packageCount + 10, currentCapacity);
-            UpdateVisuals();
-            SaveToData();
-            Debug.Log($"[PackageManager] 10 paket eklendi! Toplam: {packageCount}");
+            AddMilk(10);
+        }
+
+        [ContextMenu("Debug: Print Stock")]
+        public void DebugPrintStock()
+        {
+            Debug.Log($"[PackageManager] Toplam stok: {GetTotalBottleCount()} şişe");
+            for (int i = 0; i < salesSlotsContents.Length; i++)
+            {
+                if (salesSlotsContents[i] != null)
+                {
+                    Debug.Log($"  Kasa {i}: {salesSlotsContents[i].CurrentBottleCount} şişe");
+                }
+            }
         }
     }
 }
