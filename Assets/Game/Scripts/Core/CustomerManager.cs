@@ -74,7 +74,9 @@ namespace MilkFarm
             Debug.Log($"[CustomerManager] Müşteri #{customer.id} kuyruğa katıldı. Talep: {requestedBottles} şişe");
         }
 
-        // YENİ: Şişe bazlı
+        /// <summary>
+        /// Şişe bazlı servis (tek şişe)
+        /// </summary>
         public void ServeBottleToCustomer()
         {
             if (customerQueue.Count == 0)
@@ -100,28 +102,41 @@ namespace MilkFarm
 
             Debug.Log($"[CustomerManager] Şişe verildi. Kalan: {currentCustomer.remainingBottles}/{currentCustomer.requestedBottles}");
 
+            // Son şişe mi kontrol et
             if (currentCustomer.IsServed)
             {
                 CompleteCustomerOrder(currentCustomer);
             }
         }
 
-        // ESKİ: Geriye uyumluluk (AutoWorker için)
+        /// <summary>
+        /// Eski API - Geriye uyumluluk (AutoWorker için)
+        /// </summary>
         public void ServePackageToCustomer()
         {
             ServeBottleToCustomer();
         }
 
+        /// <summary>
+        /// Müşteri siparişini tamamla - Çoklu coin spawn
+        /// </summary>
         private void CompleteCustomerOrder(Customer customer)
         {
             Vector3 salePosition = customer.controller != null
                 ? customer.controller.transform.position
                 : transform.position;
 
-            moneyManager.EarnMoney(customer.totalPayment, salePosition);
+            // ✅ YENİ: Şişe sayısı ile coin spawn
+            moneyManager.EarnMoney(
+                customer.totalPayment,           // Toplam para
+                customer.requestedBottles,       // Şişe sayısı = Coin sayısı
+                salePosition                     // Spawn pozisyonu
+            );
+
             MilkFarmEvents.CustomerServed(customer.totalPayment);
 
-            Debug.Log($"[CustomerManager] Müşteri #{customer.id} tamamlandı! Ödeme: {customer.totalPayment}");
+            Debug.Log($"[CustomerManager] ✅ Müşteri #{customer.id} tamamlandı! " +
+                      $"Ödeme: {customer.totalPayment}, Şişe: {customer.requestedBottles} coin");
 
             if (customer.controller != null)
             {
@@ -207,6 +222,8 @@ namespace MilkFarm
             return customerQueue.Count;
         }
 
+        // === DEBUG ===
+
         [ContextMenu("Debug: Clear All Customers")]
         public void DebugClearAllCustomers()
         {
@@ -223,10 +240,11 @@ namespace MilkFarm
         [ContextMenu("Debug: Print Queue")]
         public void DebugPrintQueue()
         {
-            Debug.Log($"Kuyruk: {customerQueue.Count} müşteri");
+            Debug.Log($"[CustomerManager] Kuyruk: {customerQueue.Count} müşteri");
             for (int i = 0; i < customerQueue.Count; i++)
             {
-                Debug.Log($"  [{i}] Müşteri #{customerQueue[i].id} - {customerQueue[i].remainingBottles}/{customerQueue[i].requestedBottles}");
+                var c = customerQueue[i];
+                Debug.Log($"  [{i}] Müşteri #{c.id} - {c.remainingBottles}/{c.requestedBottles} şişe, {c.totalPayment}₺");
             }
         }
     }

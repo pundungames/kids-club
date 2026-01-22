@@ -56,7 +56,7 @@ namespace MilkFarm
         [SerializeField] private GameObject feedProgressBarPrefab;
         [SerializeField] private GameObject waterProgressBarPrefab;
 
-        private List<Station> stations = new List<Station>();
+        internal List<Station> stations = new List<Station>();
 
         private void Awake()
         {
@@ -253,44 +253,11 @@ namespace MilkFarm
                         UpdateStationVisuals(i);
                     }
                 }
-                return;
             }
 
-            // Manuel mod
-            for (int i = 0; i < stations.Count; i++)
-            {
-                Station station = stations[i];
-
-                // Yemlik timer'ı
-                if (station.foodFill > 0f)
-                {
-                    station.feedingTimer -= deltaTime;
-                    if (station.feedingTimer <= 0f)
-                    {
-                        station.foodFill = 0f;
-                        station.feedingTimer = 0f;
-                        MilkFarmEvents.StationFoodDepleted(i);
-                        Debug.Log($"[Station {i}] Yemlik boşaldı!");
-                    }
-                }
-
-                // Suluk timer'ı
-                if (station.waterFill > 0f)
-                {
-                    station.wateringTimer -= deltaTime;
-                    if (station.wateringTimer <= 0f)
-                    {
-                        station.waterFill = 0f;
-                        station.wateringTimer = 0f;
-                        MilkFarmEvents.StationWaterDepleted(i);
-                        Debug.Log($"[Station {i}] Suluk boşaldı!");
-                    }
-                }
-
-                UpdateStationVisuals(i);
-            }
+            // NOT: Manuel mod timer'ları CowController'da azaltılıyor
+            // Burada sadece Auto Feeder check yapıyoruz
         }
-
         /// <summary>
         /// İstasyon görsellerini güncelle (progress bar vs)
         /// </summary>
@@ -338,6 +305,13 @@ namespace MilkFarm
         {
             if (stationIndex < 0 || stationIndex >= stations.Count) return null;
             return stations[stationIndex];
+        }
+        public Station GetStationByIndex(int index)
+        {
+            if (index < 0 || index >= stations.Count)
+                return null;
+
+            return stations[index];
         }
 
         /// <summary>

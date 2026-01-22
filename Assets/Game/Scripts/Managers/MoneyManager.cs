@@ -1,179 +1,253 @@
 using UnityEngine;
 using Zenject;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace MilkFarm
 {
     /// <summary>
-    /// Para sistemini yöneten manager
-    /// CounterManager'daki stack ve flying sistem ile entegre
+    /// Money Manager - Multi Coin Version
+    /// 1 şişe = 1 coin
     /// </summary>
     public class MoneyManager : MonoBehaviour
     {
         [Inject] private SaveManager saveManager;
+        [Inject] private CurrencyManager currencyManager;
 
-        [Header("Para Spawn")]
-        [SerializeField] private Transform moneySpawnPoint;
-        [SerializeField] private GameObject moneyPrefab;
+        [Header("Coin Spawn")]
+        [SerializeField] private Transform coinSpawnPoint;
+        [SerializeField] private GameObject coinPrefab;
 
-        [Header("Para Stack Ayarları")]
-        [SerializeField] private float moneySpacingX = 0.4f;
-        [SerializeField] private float moneySpacingZ = 0.7f;
-        [SerializeField] private float moneyHeight = 0.2f;
-        [SerializeField] private float moneyStairOffset = 0.3f;
-        [SerializeField] private int maxMoneyStacksOnTable = 20; // 4x5 grid
+        [Header("Coin Stack Settings")]
+        [SerializeField] private float coinSpacingX = 0.25f;
+        [SerializeField] private float coinSpacingZ = 0.25f;
+        [SerializeField] private float coinSpacingY = 0.072f;
+        [SerializeField] private int gridSize = 3;
+        [SerializeField] private int maxLayers = 5;
+
+        [Header("Collection")]
+        [SerializeField] private int coinsPerClick = 9;
+
+        [Header("Spawn Delay")]
+        [SerializeField] private float coinSpawnDelay = 0.1f; // Coin'ler arasında delay
 
         private float currentMoney;
-        private float pendingMoneyOnTable;
-        private List<GameObject> spawnedMoneyObjects = new List<GameObject>();
+        private float pendingMoney;
+        private List<GameObject> spawnedCoins = new List<GameObject>();
 
-        private const int GRID_SIZE = 4;
-        private const int MAX_LAYERS = 5;
+        private Vector3 basePosition;
+        private Vector3 xDirection;
+        private Vector3 zDirection;
+        private Vector3 yDirection;
 
         private void Start()
         {
+            CalculateGridDirections();
             LoadMoney();
+        }
+
+        private void CalculateGridDirections()
+        {
+            if (coinSpawnPoint == null)
+            {
+                Debug.LogError("[MoneyManager] Coin spawn point NULL!");
+                return;
+            }
+
+            basePosition = coinSpawnPoint.position;
+
+            Vector3 posX = new Vector3(-0.956f, 0.196f, -2.335f);
+            Vector3 posZ = new Vector3(-1.206f, 0.196f, -2.585f);
+            Vector3 posY = new Vector3(-1.206f, 0.268f, -2.335f);
+
+            xDirection = posX - basePosition;
+            zDirection = posZ - basePosition;
+            yDirection = posY - basePosition;
         }
 
         private void LoadMoney()
         {
             var saveData = saveManager.GetCurrentSaveData();
             currentMoney = saveData.currentMoney;
+
+            if (currencyManager != null)
+            {
+                currencyManager.UpdateCashUI(currentMoney);
+            }
+
             Debug.Log($"[MoneyManager] Para yüklendi: {currentMoney}");
         }
 
+        // === EARN MONEY ===
+
         /// <summary>
-        /// Para kazanma (müşteriden)
+        /// Para kazan - ÇOKLU COIN SPAWN
+        /// </summary>
+        /// <param name="amount">Toplam para</param>
+        /// <param name="bottleCount">Şişe sayısı (coin sayısı)</param>
+        /// <param name="spawnPosition">Spawn başlangıç pozisyonu</param>
+        public void EarnMoney(float amount, int bottleCount, Vector3? spawnPosition = null)
+        {
+            pendingMoney += amount;
+
+            // Coin'leri delay ile spawn et
+            Vector3 startPos = spawnPosition ?? coinSpawnPoint.position;
+            StartCoroutine(SpawnMultipleCoins(bottleCount, startPos));
+
+            MilkFarmEvents.MoneyEarned(amount);
+
+            Debug.Log($"[MoneyManager] 💰 Para kazanıldı: {amount} ({bottleCount} coin). Masada: {pendingMoney}");
+        }
+
+        /// <summary>
+        /// Eski API uyumluluğu (tek coin)
         /// </summary>
         public void EarnMoney(float amount, Vector3? spawnPosition = null)
         {
-            pendingMoneyOnTable += amount;
-            MilkFarmEvents.MoneyEarned(amount);
+            EarnMoney(amount, 1, spawnPosition);
+        }
 
-            // Masada görsel para spawn et
-            Vector3 startPos = spawnPosition ?? moneySpawnPoint.position;
-            SpawnMoneyVisual(startPos);
+        // === COIN SPAWN ===
 
-            Debug.Log($"[MoneyManager] Para kazanıldı: {amount}. Masada bekleyen: {pendingMoneyOnTable}");
+        /// <summary>
+        /// Çoklu coin spawn (delay ile)
+        /// </summary>
+        private IEnumerator SpawnMultipleCoins(int count, Vector3 startPos)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                SpawnSingleCoin(startPos);
+
+                // Delay (opsiyonel - animasyon için)
+                if (coinSpawnDelay > 0 && i < count - 1)
+                {
+                    yield return new WaitForSeconds(coinSpawnDelay);
+                }
+            }
         }
 
         /// <summary>
-        /// Masadaki parayı topla
+        /// Tek coin spawn
         /// </summary>
+        private void SpawnSingleCoin(Vector3 startPos)
+        {
+            if (coinPrefab == null || coinSpawnPoint == null) return;
+
+            int maxCoins = gridSize * gridSize * maxLayers;
+            if (spawnedCoins.Count >= maxCoins)
+            {
+                Debug.LogWarning("[MoneyManager] Coin stack FULL!");
+                return;
+            }
+
+            int index = spawnedCoins.Count;
+            Vector3 targetPos = CalculateCoinPosition(index);
+
+            GameObject coin = Instantiate(coinPrefab, startPos, Quaternion.identity);
+            coin.transform.SetParent(coinSpawnPoint);
+            spawnedCoins.Add(coin);
+
+            FlyingItem flyer = coin.GetComponent<FlyingItem>();
+            if (flyer == null) flyer = coin.AddComponent<FlyingItem>();
+            flyer.FlyTo(targetPos);
+        }
+
+        private Vector3 CalculateCoinPosition(int index)
+        {
+            int layer = index / (gridSize * gridSize);
+            int gridIndex = index % (gridSize * gridSize);
+            int row = gridIndex / gridSize;
+            int col = gridIndex % gridSize;
+
+            Vector3 position = basePosition;
+            position += xDirection * col;
+            position += zDirection * row;
+            position += yDirection * layer;
+
+            return position;
+        }
+
+        // === COLLECT MONEY ===
+
+        public void CollectCoins()
+        {
+            if (spawnedCoins.Count == 0) return;
+
+            int coinsToCollect = Mathf.Min(coinsPerClick, spawnedCoins.Count);
+
+            for (int i = 0; i < coinsToCollect; i++)
+            {
+                int lastIndex = spawnedCoins.Count - 1;
+                GameObject coin = spawnedCoins[lastIndex];
+
+                if (coin != null) Destroy(coin);
+                spawnedCoins.RemoveAt(lastIndex);
+            }
+
+            Debug.Log($"[MoneyManager] {coinsToCollect} coin toplandı! Kalan: {spawnedCoins.Count}");
+            CollectMoneyFromTable();
+        }
+
         public void CollectMoneyFromTable()
         {
-            if (pendingMoneyOnTable <= 0f) return;
+            if (pendingMoney <= 0f && spawnedCoins.Count == 0) return;
 
-            currentMoney += pendingMoneyOnTable;
-            float collected = pendingMoneyOnTable;
-            pendingMoneyOnTable = 0f;
+            if (pendingMoney > 0f)
+            {
+                currentMoney += pendingMoney;
+                float collected = pendingMoney;
+                pendingMoney = 0f;
 
-            // Görsel para objelerini temizle
-            ClearMoneyVisuals();
+                if (currencyManager != null)
+                {
+                    currencyManager.UpdateCashUI(currentMoney);
+                }
 
-            MilkFarmEvents.MoneyCollected(collected);
-            SaveMoney();
+                SaveMoney();
+                MilkFarmEvents.MoneyCollected(collected);
 
-            Debug.Log($"[MoneyManager] Masadan para toplandı: {collected}. Toplam para: {currentMoney}");
+                Debug.Log($"[MoneyManager] ✅ {collected} para toplandı! Toplam: {currentMoney}");
+            }
+
+            CollectCoins();
         }
 
-        /// <summary>
-        /// Para harcama
-        /// </summary>
+        // === SPEND MONEY ===
+
         public bool SpendMoney(float amount)
         {
             if (currentMoney < amount)
             {
-                Debug.LogWarning($"[MoneyManager] Yetersiz para! Gerekli: {amount}, Mevcut: {currentMoney}");
+                Debug.LogWarning($"[MoneyManager] ❌ Yetersiz para!");
                 return false;
             }
 
             currentMoney -= amount;
-            MilkFarmEvents.MoneySpent(amount);
-            SaveMoney();
 
-            Debug.Log($"[MoneyManager] Para harcandı: {amount}. Kalan: {currentMoney}");
+            if (currencyManager != null)
+            {
+                currencyManager.UpdateCashUI(currentMoney);
+            }
+
+            SaveMoney();
+            MilkFarmEvents.MoneySpent(amount);
+
+            Debug.Log($"[MoneyManager] 💸 {amount} harcandı. Kalan: {currentMoney}");
             return true;
         }
 
-        /// <summary>
-        /// Yeterli para var mı?
-        /// </summary>
-        public bool CanAfford(float amount)
-        {
-            return currentMoney >= amount;
-        }
+        public bool CanAfford(float amount) => currentMoney >= amount;
 
-        /// <summary>
-        /// Görsel para spawn et (CounterManager mantığı)
-        /// </summary>
-        private void SpawnMoneyVisual(Vector3 startPos)
-        {
-            if (moneyPrefab == null || moneySpawnPoint == null) return;
-            if (spawnedMoneyObjects.Count >= GRID_SIZE * MAX_LAYERS)
-            {
-                Debug.LogWarning("[MoneyManager] Masa para ile dolu!");
-                return;
-            }
+        // === GETTERS ===
 
-            int index = spawnedMoneyObjects.Count;
-            int layer = index / GRID_SIZE;
-            int floorIndex = index % GRID_SIZE;
-            int row = floorIndex / 2;
-            int col = floorIndex % 2;
-            float stairShift = layer * moneyStairOffset;
+        public float GetCurrentMoney() => currentMoney;
+        public float GetPendingMoney() => pendingMoney;
+        public bool HasPendingMoney() => pendingMoney > 0f;
+        public int GetCoinCount() => spawnedCoins.Count;
+        public bool HasCoins() => spawnedCoins.Count > 0;
 
-            Vector3 targetPos = moneySpawnPoint.position +
-                               (moneySpawnPoint.right * col * moneySpacingX) +
-                               (moneySpawnPoint.forward * row * moneySpacingZ) +
-                               (moneySpawnPoint.forward * stairShift) +
-                               (Vector3.up * layer * moneyHeight);
+        // === SAVE ===
 
-            Quaternion moneyRot = Quaternion.Euler(0, -90, 0);
-            GameObject moneyObj = Instantiate(moneyPrefab, startPos, moneyRot);
-
-            // MoneyItem component'i (tıklama için)
-            MoneyItem moneyScript = moneyObj.GetComponent<MoneyItem>();
-            if (moneyScript == null) moneyScript = moneyObj.AddComponent<MoneyItem>();
-            moneyScript.Initialize(this);
-
-            spawnedMoneyObjects.Add(moneyObj);
-
-            // Flying animation
-            FlyingItem flyer = moneyObj.GetComponent<FlyingItem>();
-            if (flyer == null) flyer = moneyObj.AddComponent<FlyingItem>();
-            flyer.FlyTo(targetPos);
-        }
-
-        /// <summary>
-        /// Görsel para objelerini temizle
-        /// </summary>
-        private void ClearMoneyVisuals()
-        {
-            foreach (var moneyObj in spawnedMoneyObjects)
-            {
-                if (moneyObj != null)
-                {
-                    Destroy(moneyObj);
-                }
-            }
-            spawnedMoneyObjects.Clear();
-        }
-
-        /// <summary>
-        /// Para toplandığında çağrılır (MoneyItem'dan)
-        /// </summary>
-        public void OnMoneyCollected(MoneyItem money)
-        {
-            if (spawnedMoneyObjects.Contains(money.gameObject))
-            {
-                spawnedMoneyObjects.Remove(money.gameObject);
-            }
-        }
-
-        /// <summary>
-        /// Para kaydı
-        /// </summary>
         private void SaveMoney()
         {
             var saveData = saveManager.GetCurrentSaveData();
@@ -181,53 +255,18 @@ namespace MilkFarm
             saveManager.SaveGame(saveData);
         }
 
-        // === PUBLIC API ===
+        // === DEBUG ===
 
-        public float GetCurrentMoney() => currentMoney;
-        public float GetPendingMoney() => pendingMoneyOnTable;
-        public bool HasPendingMoney() => pendingMoneyOnTable > 0f;
-
-        /// <summary>
-        /// Debug: Para ekle
-        /// </summary>
-        [ContextMenu("Debug: Add 1000 Money")]
-        public void DebugAddMoney()
+        [ContextMenu("Debug: Earn 1000 (10 coins)")]
+        public void DebugEarnMoney()
         {
-            currentMoney += 1000f;
-            SaveMoney();
-            Debug.Log($"[MoneyManager] 1000 para eklendi! Toplam: {currentMoney}");
+            EarnMoney(1000f, 10);
         }
 
-        /// <summary>
-        /// Masa click handler (TableClicker'dan çağrılır)
-        /// </summary>
-        public void OnTableClicked()
+        [ContextMenu("Debug: Collect Money")]
+        public void DebugCollectMoney()
         {
             CollectMoneyFromTable();
-        }
-    }
-
-    /// <summary>
-    /// Para objesi - tıklanabilir
-    /// MoneyManager ile entegre (CounterManager mantığı)
-    /// </summary>
-    public class MoneyItem : MonoBehaviour
-    {
-        private MoneyManager manager;
-
-        public void Initialize(MoneyManager managerRef)
-        {
-            manager = managerRef;
-        }
-
-        void OnMouseDown()
-        {
-            if (manager != null)
-            {
-                manager.OnMoneyCollected(this);
-            }
-
-            Destroy(gameObject);
         }
     }
 }

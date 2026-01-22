@@ -62,28 +62,28 @@ namespace MilkFarm
         }
     }
 
+
     /// <summary>
     /// IAP durumları
     /// </summary>
     [Serializable]
     public class IAPSaveData
     {
-        public bool hasAutoFeeder;
-        public bool hasAutoWorker;
-        public int speedTier; // 0=normal, 1=+50%, 2=+100%
-        public int richCustomerTier; // 0=normal, 1=+50%, 2=+100%
-        public int milkStorageBoostLevel; // 0=+0, 1=+1, 2=+2...
+        // IAP Boosts
+        public bool hasAutoFeeder = false;
+        public bool hasAutoWorker = false;
+        public int speedTier = 0;
+        public int richCustomerTier = 0;
+        public int milkStorageBoostLevel = 0;
+        public int gems = 0;
 
-        public IAPSaveData()
-        {
-            hasAutoFeeder = false;
-            hasAutoWorker = false;
-            speedTier = 0;
-            richCustomerTier = 0;
-            milkStorageBoostLevel = 0;
-        }
+        // Unlocks
+        public List<int> unlockedAreas = new List<int>();
+        public List<int> unlockedTroughs = new List<int>();
+        public List<int> unlockedCows = new List<int>(); // Sadece cow unlock
+
+        // NOT: unlockedSlots KALDIRILDI - Slot unlock yok artık
     }
-
     /// <summary>
     /// Ana save data sınıfı
     /// </summary>

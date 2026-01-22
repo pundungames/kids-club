@@ -7,15 +7,15 @@ public class MilkCrate : MonoBehaviour
     [Header("Kasa Ayarları")]
     public Transform[] milkSlots; // 6 slot
 
-    private List<GameObject> spawnedBottles = new List<GameObject>(); // Spawn edilen şişeler
-    private int landedMilkCount = 0;
-    private int targetMilkCount = 0;
+    private List<GameObject> spawnedBottles = new List<GameObject>();
+    public int landedMilkCount { get; private set; } = 0; // Public getter
+    public int targetMilkCount { get; private set; } = 0;  // Public getter
 
     public float bottleScale = 0.8f;
 
     public bool IsPhysicallyFull => landedMilkCount >= milkSlots.Length;
     public bool HasSpace => targetMilkCount < milkSlots.Length;
-    public int CurrentBottleCount => landedMilkCount; // Kaç şişe var
+    public int CurrentBottleCount => landedMilkCount;
 
     void Start()
     {

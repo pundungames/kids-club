@@ -1,204 +1,295 @@
 using UnityEngine;
 using Zenject;
+using System.Collections.Generic;
 
 namespace MilkFarm
 {
     /// <summary>
-    /// IAP (In-App Purchase) durumlarını yöneten manager
-    /// Gerçek IAP entegrasyonu bu sınıfa bağlanır
+    /// IAP Manager - NULL SAFE VERSION
+    /// SaveManager null check'leri eklendi
     /// </summary>
     public class IAPManager : MonoBehaviour
     {
-        [Inject] private GameConfig config;
         [Inject] private SaveManager saveManager;
 
-        private IAPSaveData iapData;
+        // === GEM SYSTEM ===
 
-        private void Start()
+        public int GetCurrentGems()
         {
-            LoadIAPData();
-        }
+            if (saveManager == null)
+            {
+                Debug.LogWarning("[IAPManager] SaveManager NULL!");
+                return 0;
+            }
 
-        private void LoadIAPData() 
-        {
             var saveData = saveManager.GetCurrentSaveData();
-            iapData = saveData.iap;
-        }
-
-        // === SPEED BOOST ===
-        
-        /// <summary>
-        /// +%50 hız IAP satın al
-        /// </summary>
-        public void PurchaseSpeedBoost50()
-        {
-            if (iapData.speedTier < 1)
+            if (saveData == null || saveData.iap == null)
             {
-                iapData.speedTier = 1;
-                MilkFarmEvents.IAPPurchased("speed_boost_50");
-                SaveIAPData();
-                Debug.Log("[IAPManager] +%50 Hız IAP satın alındı!");
+                return 0;
             }
+
+            return saveData.iap.gems;
         }
 
-        /// <summary>
-        /// +%100 hız IAP satın al (Altın İnekler)
-        /// </summary>
-        public void PurchaseSpeedBoost100()
+        public bool CanAffordGems(int cost) => GetCurrentGems() >= cost;
+
+        public bool SpendGems(int amount)
         {
-            if (iapData.speedTier < 2)
+            if (saveManager == null) return false;
+
+            if (!CanAffordGems(amount))
             {
-                iapData.speedTier = 2;
-                MilkFarmEvents.IAPPurchased("speed_boost_100");
-                SaveIAPData();
-                Debug.Log("[IAPManager] +%100 Hız IAP satın alındı!");
+                Debug.LogWarning($"[IAPManager] ❌ Yetersiz gem!");
+                return false;
             }
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+
+            saveData.iap.gems -= amount;
+            saveManager.SaveGame(saveData);
+
+            MilkFarmEvents.GemChanged();
+
+            Debug.Log($"[IAPManager] 💎 {amount} gem harcandı. Kalan: {saveData.iap.gems}");
+            return true;
         }
 
-        /// <summary>
-        /// Aktif global hız çarpanını döner
-        /// </summary>
+        public void AddGems(int amount)
+        {
+            if (saveManager == null) return;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+
+            saveData.iap.gems += amount;
+            saveManager.SaveGame(saveData);
+
+            MilkFarmEvents.GemChanged();
+
+            Debug.Log($"[IAPManager] 💎 {amount} gem eklendi. Toplam: {saveData.iap.gems}");
+        }
+
+        // === IAP BOOSTS (NULL SAFE) ===
+
+        public bool HasAutoWorker()
+        {
+            if (saveManager == null) return false;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            return saveData?.iap?.hasAutoWorker ?? false;
+        }
+
+        public bool HasAutoFeeder()
+        {
+            if (saveManager == null) return false;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            return saveData?.iap?.hasAutoFeeder ?? false;
+        }
+
         public float GetGlobalSpeedMultiplier()
         {
-            switch (iapData.speedTier)
-            {
-                case 0: return config.globalSpeedMultiplierNormal;
-                case 1: return config.globalSpeedMultiplierFast;
-                case 2: return config.globalSpeedMultiplierSuper;
-                default: return config.globalSpeedMultiplierNormal;
-            }
+            if (saveManager == null) return 1f;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            int tier = saveData?.iap?.speedTier ?? 0;
+            return tier == 2 ? 2f : (tier == 1 ? 1.5f : 1f);
         }
 
-        // === RICH CUSTOMER ===
-
-        /// <summary>
-        /// +%50 zengin müşteri IAP satın al
-        /// </summary>
-        public void PurchaseRichCustomer50()
-        {
-            if (iapData.richCustomerTier < 1)
-            {
-                iapData.richCustomerTier = 1;
-                MilkFarmEvents.IAPPurchased("rich_customer_50");
-                SaveIAPData();
-                Debug.Log("[IAPManager] +%50 Zengin Müşteri IAP satın alındı!");
-            }
-        }
-
-        /// <summary>
-        /// +%100 zengin müşteri IAP satın al
-        /// </summary>
-        public void PurchaseRichCustomer100()
-        {
-            if (iapData.richCustomerTier < 2)
-            {
-                iapData.richCustomerTier = 2;
-                MilkFarmEvents.IAPPurchased("rich_customer_100");
-                SaveIAPData();
-                Debug.Log("[IAPManager] +%100 Zengin Müşteri IAP satın alındı!");
-            }
-        }
-
-        /// <summary>
-        /// Aktif zengin müşteri çarpanını döner
-        /// </summary>
         public float GetCustomerRichMultiplier()
         {
-            switch (iapData.richCustomerTier)
-            {
-                case 0: return config.customerRichMultiplierNormal;
-                case 1: return config.customerRichMultiplierPlus50;
-                case 2: return config.customerRichMultiplierPlus100;
-                default: return config.customerRichMultiplierNormal;
-            }
+            if (saveManager == null) return 1f;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            int tier = saveData?.iap?.richCustomerTier ?? 0;
+            return tier == 2 ? 2f : (tier == 1 ? 1.5f : 1f);
         }
 
-        // === MILK STORAGE BOOST ===
-
-        /// <summary>
-        /// Süt depolama kapasitesini artır (level bazlı)
-        /// </summary>
-        public void PurchaseMilkStorageBoost()
-        {
-            iapData.milkStorageBoostLevel++;
-            MilkFarmEvents.IAPPurchased($"milk_storage_boost_{iapData.milkStorageBoostLevel}");
-            SaveIAPData();
-            Debug.Log($"[IAPManager] Süt depolama +{iapData.milkStorageBoostLevel} IAP satın alındı!");
-        }
-
-        /// <summary>
-        /// Toplam süt depolama bonusu
-        /// </summary>
         public int GetMilkStorageBoost()
         {
-            return iapData.milkStorageBoostLevel;
-        }
+            if (saveManager == null) return 0;
 
-        // === AUTO FEEDER ===
-
-        /// <summary>
-        /// Oto yem & su doldurucu IAP satın al
-        /// </summary>
-        public void PurchaseAutoFeeder()
-        {
-            if (!iapData.hasAutoFeeder)
-            {
-                iapData.hasAutoFeeder = true;
-                MilkFarmEvents.IAPPurchased("auto_feeder");
-                SaveIAPData();
-                Debug.Log("[IAPManager] Oto Yem & Su Doldurucu IAP satın alındı!");
-            }
-        }
-
-        public bool HasAutoFeeder() => iapData.hasAutoFeeder;
-
-        // === AUTO WORKER ===
-
-        /// <summary>
-        /// Eleman (Auto Worker) IAP satın al
-        /// </summary>
-        public void PurchaseAutoWorker()
-        {
-            if (!iapData.hasAutoWorker)
-            {
-                iapData.hasAutoWorker = true;
-                MilkFarmEvents.IAPPurchased("auto_worker");
-                SaveIAPData();
-                Debug.Log("[IAPManager] Eleman (Auto Worker) IAP satın alındı!");
-            }
-        }
-
-        public bool HasAutoWorker() => iapData.hasAutoWorker;
-
-        // === SAVE ===
-
-        private void SaveIAPData()
-        {
             var saveData = saveManager.GetCurrentSaveData();
-            saveData.iap = iapData;
+            return saveData?.iap?.milkStorageBoostLevel ?? 0;
+        }
+
+        // === PURCHASE ===
+
+        public void ProcessPurchase(PurchaseItemData data)
+        {
+            if (saveManager == null)
+            {
+                Debug.LogError("[IAPManager] ❌ SaveManager NULL - Purchase iptal!");
+                return;
+            }
+
+            if (data == null)
+            {
+                Debug.LogError("[IAPManager] ❌ Purchase data NULL!");
+                return;
+            }
+
+            Debug.Log($"[IAPManager] 🛒 Purchase: {data.productName}");
+
+            if (data.isRealMoney) return;
+
+            if (data.gemCost > 0 && !SpendGems(data.gemCost))
+            {
+                return;
+            }
+
+            switch (data.type)
+            {
+                case PurchaseType.SpeedBoost50: SetSpeedTier(1); break;
+                case PurchaseType.SpeedBoost100: SetSpeedTier(2); break;
+                case PurchaseType.RichCustomer50: SetRichTier(1); break;
+                case PurchaseType.RichCustomer100: SetRichTier(2); break;
+                case PurchaseType.MilkStorage: IncrementStorageBoost(); break;
+                case PurchaseType.AutoFeeder: SetAutoFeeder(true); break;
+                case PurchaseType.AutoWorker: SetAutoWorker(true); break;
+                case PurchaseType.UnlockArea: UnlockArea(data.targetIndex); break;
+                case PurchaseType.UnlockTrough: UnlockTrough(data.targetIndex); break;
+                case PurchaseType.UnlockCow: UnlockCow(data.targetIndex); break;
+            }
+        }
+
+        // === IAP BOOST METHODS ===
+
+        private void SetSpeedTier(int tier)
+        {
+            if (saveManager == null) return;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+            saveData.iap.speedTier = tier;
             saveManager.SaveGame(saveData);
+            Debug.Log($"[IAPManager] ✅ Speed tier: {tier}");
+        }
+
+        private void SetRichTier(int tier)
+        {
+            if (saveManager == null) return;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+            saveData.iap.richCustomerTier = tier;
+            saveManager.SaveGame(saveData);
+            Debug.Log($"[IAPManager] ✅ Rich tier: {tier}");
+        }
+
+        private void IncrementStorageBoost()
+        {
+            if (saveManager == null) return;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+            saveData.iap.milkStorageBoostLevel++;
+            saveManager.SaveGame(saveData);
+            Debug.Log($"[IAPManager] ✅ Storage boost: {saveData.iap.milkStorageBoostLevel}");
+        }
+
+        private void SetAutoFeeder(bool value)
+        {
+            if (saveManager == null) return;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+            saveData.iap.hasAutoFeeder = value;
+            saveManager.SaveGame(saveData);
+            Debug.Log($"[IAPManager] ✅ Auto Feeder: {value}");
+        }
+
+        private void SetAutoWorker(bool value)
+        {
+            if (saveManager == null) return;
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+            saveData.iap.hasAutoWorker = value;
+            saveManager.SaveGame(saveData);
+            Debug.Log($"[IAPManager] ✅ Auto Worker: {value}");
+        }
+
+        // === UNLOCK METHODS ===
+
+        private void UnlockCow(int globalIndex)
+        {
+            if (saveManager == null) return;
+
+            Debug.Log($"[IAPManager] 🐄 UnlockCow: {globalIndex}");
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+
+            if (!saveData.iap.unlockedCows.Contains(globalIndex))
+            {
+                saveData.iap.unlockedCows.Add(globalIndex);
+                saveManager.SaveGame(saveData);
+            }
+
+            MilkFarmEvents.CowUnlocked(globalIndex);
+        }
+
+        private void UnlockArea(int areaIndex)
+        {
+            if (saveManager == null) return;
+
+            Debug.Log($"[IAPManager] 🏗️ UnlockArea: {areaIndex}");
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+
+            if (!saveData.iap.unlockedAreas.Contains(areaIndex))
+            {
+                saveData.iap.unlockedAreas.Add(areaIndex);
+                saveManager.SaveGame(saveData);
+            }
+
+            MilkFarmEvents.AreaUnlocked(areaIndex);
+        }
+
+        private void UnlockTrough(int areaIndex)
+        {
+            if (saveManager == null) return;
+
+            Debug.Log($"[IAPManager] 🥤 UnlockTrough: {areaIndex}");
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+
+            if (!saveData.iap.unlockedTroughs.Contains(areaIndex))
+            {
+                saveData.iap.unlockedTroughs.Add(areaIndex);
+                saveManager.SaveGame(saveData);
+            }
+
+            MilkFarmEvents.TroughUnlocked(areaIndex);
         }
 
         // === DEBUG ===
-        
-        [ContextMenu("Debug: Reset All IAPs")]
-        public void DebugResetIAPs()
-        {
-            iapData = new IAPSaveData();
-            SaveIAPData();
-            Debug.Log("[IAPManager] Tüm IAP'ler sıfırlandı!");
-        }
 
-        [ContextMenu("Debug: Unlock All IAPs")]
-        public void DebugUnlockAllIAPs()
+        [ContextMenu("Add 100 Gems")]
+        public void DebugAddGems() => AddGems(100);
+
+        [ContextMenu("Print Status")]
+        public void DebugPrintStatus()
         {
-            iapData.hasAutoFeeder = true;
-            iapData.hasAutoWorker = true;
-            iapData.speedTier = 2;
-            iapData.richCustomerTier = 2;
-            iapData.milkStorageBoostLevel = 5;
-            SaveIAPData();
-            Debug.Log("[IAPManager] Tüm IAP'ler açıldı!");
+            if (saveManager == null)
+            {
+                Debug.LogError("[IAPManager] SaveManager NULL!");
+                return;
+            }
+
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData?.iap == null)
+            {
+                Debug.Log("[IAPManager] No IAP data");
+                return;
+            }
+
+            Debug.Log($"[IAPManager] Gems: {saveData.iap.gems}");
+            Debug.Log($"[IAPManager] Unlocked Cows: {string.Join(", ", saveData.iap.unlockedCows)}");
         }
     }
 }

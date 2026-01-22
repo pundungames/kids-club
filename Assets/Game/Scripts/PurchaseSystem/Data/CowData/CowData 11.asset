@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f496196c9e79824c8a33d15d539ad95, type: 3}
+  m_Name: CowData 11
+  m_EditorClassIdentifier: 
+  titleText: Unlock New Cow!
+  icon: {fileID: 21300000, guid: 7c227cf25c41c2a48830c054cb24592d, type: 3}
+  productName: New Cow
+  benefitDescription: +%100 Milk Production
+  priceText: 10
+  productId: NewCow11
+  type: 10
+  targetIndex: 11
+  gemCost: 10
+  realPrice: 0
+  isRealMoney: 0

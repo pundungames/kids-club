@@ -11,7 +11,7 @@ namespace MilkFarm
     {
         [Header("Config")]
         [SerializeField] private GameConfig gameConfig;
-         
+
         public override void InstallBindings()
         {
 
@@ -19,6 +19,8 @@ namespace MilkFarm
             Container.Bind<GameConfig>().FromInstance(gameConfig).AsSingle();
 
             // Managers
+            Container.Bind<UIManager>().FromComponentInHierarchy().AsSingle().NonLazy();
+            Container.Bind<CurrencyManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<SaveManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<IAPManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<MoneyManager>().FromComponentInHierarchy().AsSingle().NonLazy();

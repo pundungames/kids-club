@@ -1,60 +1,120 @@
-using DG.Tweening;
-using System.Collections;
-using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
+using Zenject;
 
-public class UIManager : MonoBehaviour
+namespace MilkFarm
 {
-    [SerializeField] GameObject menuPanel;
-    [SerializeField] GameObject endGamePanel;
-    [SerializeField] GameObject failPanel;
-    private void Awake()
+    /// <summary>
+    /// UI yöneticisi - Panelleri açar/kapatýr
+    /// </summary>
+    public class UIManager : MonoBehaviour
     {
-    }
-    void Start()
-    {
-    }
+        [Header("Panels")]
+        [SerializeField] internal PurchasePanelUI purchasePanel;
 
-    private void OnEnable()
-    {
-        EventManager.gameModeChange += GameModeChange;
-        EventManager.levelFail += Fail;
-    }
-    private void OnDisable()
-    {
-        EventManager.gameModeChange -= GameModeChange;
-        EventManager.levelFail -= Fail;
-    }
-    void GameModeChange(GameMode mode)
-    {
-        
-    }
-    void EndGamePanel()
-    {
-        endGamePanel.SetActive(true);
-    }
+        [Header("ScriptableObject References")]
+        [SerializeField] private PurchaseItemData[] cowPurchaseData;     // Ýnek satýn alma verileri
+        [SerializeField] private PurchaseItemData[] areaPurchaseData;    // Area unlock verileri
+        [SerializeField] private PurchaseItemData[] troughPurchaseData;  // Trough unlock verileri
+        [SerializeField] private PurchaseItemData[] slotPurchaseData;    // Slot unlock verileri
 
-    public void GameStart()
-    {
-        EventManager.OnGameModeChange(GameMode.game);
-        menuPanel.SetActive(false);
+        private void Start()
+        {
+            // Panel'leri kapat
+            if (purchasePanel != null)
+            {
+                purchasePanel.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Ýnek satýn alma panelini aç
+        /// </summary>
+        public void OpenCowPurchasePanel(int cowIndex)
+        {
+            if (cowPurchaseData == null || cowIndex >= cowPurchaseData.Length)
+            {
+                Debug.LogError($"[UIManager] Cow data yok! Index: {cowIndex}");
+                return;
+            }
+
+            PurchaseItemData data = cowPurchaseData[cowIndex];
+            if (data == null)
+            {
+                Debug.LogError($"[UIManager] Cow data null! Index: {cowIndex}");
+                return;
+            }
+
+            OpenPurchasePanel(data);
+        }
+
+        /// <summary>
+        /// Area unlock panelini aç
+        /// </summary>
+        public void OpenAreaPurchasePanel(int areaIndex)
+        {
+            if (areaPurchaseData == null || areaIndex >= areaPurchaseData.Length)
+            {
+                Debug.LogError($"[UIManager] Area data yok! Index: {areaIndex}");
+                return;
+            }
+
+            PurchaseItemData data = areaPurchaseData[areaIndex];
+            OpenPurchasePanel(data);
+        }
+
+        /// <summary>
+        /// Trough unlock panelini aç
+        /// </summary>
+        public void OpenTroughPurchasePanel(int troughIndex)
+        {
+            if (troughPurchaseData == null || troughIndex >= troughPurchaseData.Length)
+            {
+                Debug.LogError($"[UIManager] Trough data yok! Index: {troughIndex}");
+                return;
+            }
+
+            PurchaseItemData data = troughPurchaseData[troughIndex];
+            OpenPurchasePanel(data);
+        }
+
+        /// <summary>
+        /// Slot unlock panelini aç
+        /// </summary>
+        public void OpenSlotPurchasePanel(int slotIndex)
+        {
+            if (slotPurchaseData == null || slotIndex >= slotPurchaseData.Length)
+            {
+                Debug.LogError($"[UIManager] Slot data yok! Index: {slotIndex}");
+                return;
+            }
+
+            PurchaseItemData data = slotPurchaseData[slotIndex];
+            OpenPurchasePanel(data);
+        }
+
+        /// <summary>
+        /// Genel purchase panel aç
+        /// </summary>
+        public void OpenPurchasePanel(PurchaseItemData data)
+        {
+            if (purchasePanel == null)
+            {
+                Debug.LogError("[UIManager] Purchase panel null!");
+                return;
+            }
+
+            purchasePanel.OpenPanel(data);
+        }
+
+        /// <summary>
+        /// Tüm panelleri kapat
+        /// </summary>
+        public void CloseAllPanels()
+        {
+            if (purchasePanel != null)
+            {
+                purchasePanel.ClosePanel();
+            }
+        }
     }
-    void Fail()
-    {
-        failPanel.SetActive(true);
-        Invoke("Retry", 2f);
-    }
-    void Retry()
-    {
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
-}
-public enum GameMode
-{
-    menu,
-    game,
-    endGame
 }

@@ -6,8 +6,8 @@ using UnityEngine.Events;
 public static class EventManager
 {
 
-    public static event UnityAction<GameMode> gameModeChange;
-    public static void OnGameModeChange(GameMode mode) => gameModeChange?.Invoke(mode);
+  /*  public static event UnityAction<GameMode> gameModeChange;
+    public static void OnGameModeChange(GameMode mode) => gameModeChange?.Invoke(mode);*/
 
 
 

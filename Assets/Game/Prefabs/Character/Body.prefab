@@ -4139,7 +4139,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5070730096735565627}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4147,7 +4147,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.086, y: 0.045}
+  m_AnchoredPosition: {x: -0.152, y: 0.045}
   m_SizeDelta: {x: 0.2535, y: 0.25347}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6323881686978491087
@@ -4528,8 +4528,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.109, y: 0.036}
-  m_SizeDelta: {x: 0.2083, y: 0.2358}
+  m_AnchoredPosition: {x: 0.041, y: 0.0263}
+  m_SizeDelta: {x: 0.2589, y: 0.1913}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8094683995666203026
 CanvasRenderer:
@@ -4559,7 +4559,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 1
+  m_text: 4/4
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8d34560b6d49c4469b2174ccd34ae34b, type: 2}
   m_sharedMaterial: {fileID: 8690591861142563998, guid: 8d34560b6d49c4469b2174ccd34ae34b,
@@ -4587,14 +4587,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 0.2
+  m_fontSize: 0.1
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
   m_fontSizeMin: 0
-  m_fontSizeMax: 72
+  m_fontSizeMax: 0.1
   m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -6903,8 +6903,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0.008, y: 0.133}
-  m_SizeDelta: {x: 0.5294, y: 0.3783}
+  m_AnchoredPosition: {x: -0, y: 0.0658}
+  m_SizeDelta: {x: 0.3889, y: 0.2438}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7147781323758232796
 CanvasRenderer:
@@ -7753,8 +7753,9 @@ MonoBehaviour:
   appearanceManager: {fileID: 3656899480613743841}
   purchasedIcon: {fileID: 0}
   stopThreshold: 0.01
-  isReadyToBuy: 0
+  packageTextParent: {fileID: 0}
   packageCountText: {fileID: 5605462662064725598}
+  isReadyToBuy: 0
 --- !u!136 &7930357524834255684
 CapsuleCollider:
   m_ObjectHideFlags: 0

@@ -232,7 +232,7 @@ public class CustomerController : MonoBehaviour
             packageTextParent.SetActive(false);
         }
 
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.8f);
 
         if (customerManager != null) customerManager.LeaveQueue(this);
         currentState = State.WalkingToExit;

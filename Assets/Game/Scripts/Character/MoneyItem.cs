@@ -9,7 +9,7 @@ public class MoneyItem : MonoBehaviour
     {
         if (moneyManager != null)
         {
-            moneyManager.OnTableClicked();
+          //  moneyManager.OnTableClicked();
         }
     }
 }

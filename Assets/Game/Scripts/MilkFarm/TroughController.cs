@@ -1,11 +1,13 @@
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 using Zenject;
 
 namespace MilkFarm
 {
     /// <summary>
-    /// Yemlik/Suluk controller - İNEK BAZLI TÜKETİM
-    /// İnek sayısına göre azalır
+    /// Yemlik/Suluk controller - ÜRETİM BAZLI TÜKETİM
+    /// Sadece inek üretim yaparken tüketir
     /// </summary>
     public class TroughController : MonoBehaviour
     {
@@ -13,8 +15,10 @@ namespace MilkFarm
         [SerializeField] private Transform fillMesh;
         [SerializeField] private float loweredYOffset = -0.5f;
 
-        [Header("UI İkon")]
+        [Header("UI")]
         [SerializeField] private GameObject emptyIcon;
+        [SerializeField] private Image fillBar;
+        [SerializeField] private TextMeshProUGUI fillText;
 
         [Header("Tür")]
         [SerializeField] private bool isFeedTrough = true;
@@ -27,11 +31,11 @@ namespace MilkFarm
         private Vector3 initialScale;
         private Vector3 loweredPos;
 
-        // GDD v2
         private GameConfig config;
         private IAPManager iapManager;
         private int stationIndex = -1;
-        private int activeCowCount = 0; // Bu istasyondaki aktif inek sayısı
+        private int activeCowCount = 0;
+        private int producingCowCount = 0; // Kaç inek üretim yapıyor
 
         public bool HasResource => currentFill > 0f;
 
@@ -61,10 +65,7 @@ namespace MilkFarm
                 UpdateVisuals();
             }
 
-            if (emptyIcon != null)
-            {
-                emptyIcon.SetActive(currentFill <= 0f);
-            }
+            UpdateUI();
         }
 
         void Update()
@@ -80,23 +81,21 @@ namespace MilkFarm
                 return;
             }
 
-            // İnek yoksa tüketim yok!
-            if (activeCowCount <= 0 || currentFill <= 0f)
+            // ÜRETİM YAPAN İNEK YOKSA TÜKETİM YOK!
+            if (producingCowCount <= 0 || currentFill <= 0f)
             {
                 return;
             }
 
-            // İnek bazlı tüketim hızı
-            // Her inek için drain rate hesapla
+            // Üretim bazlı tüketim
             float drainInterval = isFeedTrough ? config.feedingInterval : config.wateringInterval;
-            float consumptionPerSecond = (1f / drainInterval) * activeCowCount; // İnek sayısı kadar hızlı
+            float consumptionPerSecond = (1f / drainInterval) * producingCowCount; // Sadece üreten inekler
 
             currentFill -= consumptionPerSecond * Time.deltaTime;
             currentFill = Mathf.Max(0f, currentFill);
 
             UpdateVisuals();
 
-            // Tam boşaldığında event fırlat (bir kere)
             if (currentFill <= 0f)
             {
                 OnDepleted();
@@ -107,7 +106,7 @@ namespace MilkFarm
 
         private void OnDepleted()
         {
-            if (wasDepleted) return; // Zaten event fırlatıldı
+            if (wasDepleted) return;
 
             wasDepleted = true;
 
@@ -116,7 +115,7 @@ namespace MilkFarm
             else
                 MilkFarmEvents.StationWaterDepleted(stationIndex);
 
-            Debug.Log($"[TroughController] {name} boşaldı! (İnek sayısı: {activeCowCount})");
+            Debug.Log($"[TroughController] {name} boşaldı! (Üreten inek: {producingCowCount})");
         }
 
         void OnMouseDown()
@@ -133,7 +132,7 @@ namespace MilkFarm
                 : 0.25f;
 
             currentFill = Mathf.Min(1f, currentFill + fillAmount);
-            wasDepleted = false; // Reset flag
+            wasDepleted = false;
             UpdateVisuals();
 
             if (isFeedTrough)
@@ -153,17 +152,54 @@ namespace MilkFarm
             Debug.Log($"[TroughController] {name} - Aktif inek sayısı: {activeCowCount}");
         }
 
+        /// <summary>
+        /// Üretim yapan inek sayısını set et (CowController'dan çağrılır)
+        /// </summary>
+        public void SetProducingCowCount(int count)
+        {
+            producingCowCount = count;
+            Debug.Log($"[TroughController] {name} - Üreten inek sayısı: {producingCowCount}");
+        }
+
+        /// <summary>
+        /// Bir inek üretim başlattı
+        /// </summary>
+        public void OnCowStartProducing()
+        {
+            producingCowCount++;
+            Debug.Log($"[TroughController] {name} - Üreten inek: {producingCowCount}");
+        }
+
+        /// <summary>
+        /// Bir inek üretim bitirdi
+        /// </summary>
+        public void OnCowStopProducing()
+        {
+            producingCowCount--;
+            if (producingCowCount < 0) producingCowCount = 0;
+            Debug.Log($"[TroughController] {name} - Üreten inek: {producingCowCount}");
+        }
+
         void UpdateVisuals()
         {
             if (fillMesh != null)
             {
                 fillMesh.localPosition = Vector3.Lerp(loweredPos, initialLocalPos, currentFill);
+            }
 
-                fillMesh.localScale = Vector3.Lerp(
-                    new Vector3(initialScale.x, 0f, initialScale.z),
-                    initialScale,
-                    currentFill
-                );
+            UpdateUI();
+        }
+
+        private void UpdateUI()
+        {
+            if (fillBar != null)
+            {
+                fillBar.fillAmount = currentFill;
+            }
+
+            if (fillText != null)
+            {
+                fillText.text = $"%{(currentFill * 100):F0}";
             }
 
             if (emptyIcon != null)
@@ -184,6 +220,7 @@ namespace MilkFarm
         }
 
         public int GetActiveCowCount() => activeCowCount;
+        public int GetProducingCowCount() => producingCowCount;
 
         [ContextMenu("Debug: Fill Instantly")]
         public void DebugFillInstantly()

@@ -9,8 +9,6 @@ namespace MilkFarm
     public static class MilkFarmEvents
     {
         // === İNEK EVENTLERİ ===
-        public static event Action<int> OnCowUnlocked;
-        public static void CowUnlocked(int cowIndex) => OnCowUnlocked?.Invoke(cowIndex);
 
         public static event Action<int, int> OnCowLevelUp;
         public static void CowLevelUp(int cowIndex, int newLevel) => OnCowLevelUp?.Invoke(cowIndex, newLevel);
@@ -82,5 +80,44 @@ namespace MilkFarm
         // === AUTO WORKER EVENTLERİ ===
         public static event Action OnAutoWorkerTick;
         public static void AutoWorkerTick() => OnAutoWorkerTick?.Invoke();
+
+        /// <summary>
+        /// İnek unlock edildiğinde
+        /// </summary>
+        public static event Action<int> OnCowUnlocked;
+
+        /// <summary>
+        /// Area unlock edildiğinde
+        /// </summary>
+        public static event Action<int> OnAreaUnlocked;
+
+        /// <summary>
+        /// Trough unlock edildiğinde
+        /// </summary>
+        public static event Action<int> OnTroughUnlocked;
+
+        // === EVENT FIRE METHODS ===
+
+        public static void CowUnlocked(int globalIndex)
+        {
+            OnCowUnlocked?.Invoke(globalIndex);
+        }
+
+        public static void AreaUnlocked(int areaIndex)
+        {
+            OnAreaUnlocked?.Invoke(areaIndex);
+        }
+
+        public static void TroughUnlocked(int areaIndex)
+        {
+            OnTroughUnlocked?.Invoke(areaIndex);
+        }
+
+        public static event System.Action OnGemChanged;
+
+        public static void GemChanged()
+        {
+            OnGemChanged?.Invoke();
+        }
     }
 }

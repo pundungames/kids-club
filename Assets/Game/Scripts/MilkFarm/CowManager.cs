@@ -66,8 +66,17 @@ namespace MilkFarm
         private void Start()
         {
             LoadFromSaveData();
+            UpdateStationCowCounts();
+        }
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnCowUnlocked += HandleCowUnlocked;
         }
 
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnCowUnlocked -= HandleCowUnlocked;
+        }
         private void InitializeCows()
         {
             for (int i = 0; i < config.maxCowSlots; i++)
@@ -75,6 +84,26 @@ namespace MilkFarm
                 Cow cow = new Cow(i);
                 cows.Add(cow);
             }
+        }
+        private void HandleCowUnlocked(int globalIndex)
+        {
+            Debug.Log($"[CowManager] 🔔 Event received: Cow {globalIndex} unlocked!");
+
+            if (globalIndex < 0 || globalIndex >= cows.Count)
+            {
+                Debug.LogError($"[CowManager] Invalid cow index: {globalIndex}");
+                return;
+            }
+
+            // Zaten unlock mu kontrol et
+            if (cows[globalIndex].isUnlocked)
+            {
+                Debug.LogWarning($"[CowManager] Cow {globalIndex} zaten unlock!");
+                return;
+            }
+
+            // Unlock & Spawn
+            UnlockAndSpawnCow(globalIndex);
         }
 
         /// <summary>
@@ -84,6 +113,8 @@ namespace MilkFarm
         {
             var saveData = saveManager.GetCurrentSaveData();
 
+            Debug.Log("[CowManager] 📂 Loading cows...");
+
             for (int i = 0; i < cows.Count && i < saveData.cows.Count; i++)
             {
                 var cowData = saveData.cows[i];
@@ -92,15 +123,27 @@ namespace MilkFarm
                 cows[i].currentMilk = cowData.storedMilk;
                 cows[i].productionTimer = cowData.productionTimer;
 
+                // Unlocked ise spawn et
                 if (cows[i].isUnlocked && cowSlots[i] != null)
                 {
                     SpawnCow(i);
+                    Debug.Log($"[CowManager] Cow {i} loaded & spawned");
                 }
             }
 
-            Debug.Log($"[CowManager] {cows.FindAll(c => c.isUnlocked).Count} inek yüklendi.");
+            Debug.Log($"[CowManager] ✅ {cows.FindAll(c => c.isUnlocked).Count} inek yüklendi.");
         }
+        /// <summary>
+        /// İneği unlock olarak işaretle (spawn olmadan)
+        /// IAPManager load'dan önce çağrılır
+        /// </summary>
+        public void MarkCowAsUnlocked(int index, bool unlocked = true)
+        {
+            if (index < 0 || index >= cows.Count) return;
 
+            cows[index].isUnlocked = unlocked;
+            Debug.Log($"[CowManager] Cow {index} marked as unlocked: {unlocked}");
+        }
         /// <summary>
         /// Mevcut durumu save data'ya kaydet
         /// </summary>
@@ -177,7 +220,7 @@ namespace MilkFarm
                 if (!cow.isUnlocked || cow.controller == null) continue;
 
                 // Controller'dan mevcut süt miktarını sync et
-                cow.currentMilk = cow.controller.GetCurrentMilk();
+                cow.currentMilk = cow.controller.GetMilkStack();
 
                 // Storage limit kontrolü
                 int storageLimit = GetMilkStorageLimit();
@@ -211,32 +254,45 @@ namespace MilkFarm
             }
         }
 
-        // === PUBLIC API ===
-
-        /// <summary>
-        /// İnek açma (IAP ile)
-        /// </summary>
-        public bool UnlockCow(int index)
+      
+        private void UpdateStationCowCounts()
         {
-            if (index < 0 || index >= cows.Count) return false;
-            if (cows[index].isUnlocked) return false;
-
-            cows[index].isUnlocked = true;
-            cows[index].level = 1;
-            cows[index].currentMilk = 0;
-            cows[index].productionTimer = 0f;
-
-            if (cowSlots[index] != null)
+            // Her istasyon için aktif inek sayısını hesapla
+            for (int stationIndex = 0; stationIndex < 4; stationIndex++)
             {
-                SpawnCow(index);
-            }
+                int cowCount = GetActiveCowCountForStation(stationIndex);
 
-            MilkFarmEvents.CowUnlocked(index);
-            SaveToData();
-            Debug.Log($"[CowManager] İnek {index} açıldı!");
-            return true;
+                // Yemlik ve suluğa bildir
+                TroughController feedTrough = stationManager.GetFeedTrough(stationIndex);
+                if (feedTrough != null)
+                {
+                    feedTrough.SetActiveCowCount(cowCount);
+                }
+
+                TroughController waterTrough = stationManager.GetWaterTrough(stationIndex);
+                if (waterTrough != null)
+                {
+                    waterTrough.SetActiveCowCount(cowCount);
+                }
+            }
         }
 
+        private int GetActiveCowCountForStation(int stationIndex)
+        {
+            int count = 0;
+            int startIndex = stationIndex * config.cowsPerStation;
+            int endIndex = startIndex + config.cowsPerStation;
+
+            for (int i = startIndex; i < endIndex && i < cows.Count; i++)
+            {
+                if (cows[i].isUnlocked)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
         /// <summary>
         /// İnek level yükseltme (soft currency ile)
         /// </summary>
@@ -316,19 +372,40 @@ namespace MilkFarm
 
         public List<Cow> GetAllCows() => cows;
         public Cow GetCow(int index) => (index >= 0 && index < cows.Count) ? cows[index] : null;
+        // CowManager.cs'e ekle:
 
         /// <summary>
-        /// Debug: Tüm inekleri aç
+        /// İnek unlock ve spawn (IAP/AreaController'dan çağrılır)
         /// </summary>
-        [ContextMenu("Debug: Unlock All Cows")]
-        public void DebugUnlockAllCows()
+        public void UnlockAndSpawnCow(int index)
         {
-            for (int i = 0; i < cows.Count; i++)
+            if (index < 0 || index >= cows.Count)
             {
-                if (!cows[i].isUnlocked)
-                {
-                    UnlockCow(i);
-                }
+                Debug.LogError($"[CowManager] Geçersiz cow index: {index}");
+                return;
+            }
+
+            Cow cow = cows[index];
+
+            // Unlock
+            cow.isUnlocked = true;
+
+            // Spawn (trough bağlama ile)
+            if (cowSlots != null && index < cowSlots.Length && cowSlots[index] != null)
+            {
+                SpawnCow(index);
+
+                // Station cow count güncelle
+                UpdateStationCowCounts();
+
+                // Save
+                SaveToData();
+
+                Debug.Log($"[CowManager] ✅ Cow {index} unlocked & spawned!");
+            }
+            else
+            {
+                Debug.LogError($"[CowManager] Cow slot {index} bulunamadı!");
             }
         }
     }
