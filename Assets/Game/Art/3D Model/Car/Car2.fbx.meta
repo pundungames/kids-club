@@ -3,12 +3,7 @@ guid: f99be8415e499f14f8b7b5accca1f966
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: Colopallete
-    second: {fileID: 2100000, guid: e13eb07207cb45b47a725ac192aae4bd, type: 2}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0
