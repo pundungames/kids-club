@@ -28,7 +28,7 @@ namespace MilkFarm
             Container.Bind<StationManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<PackageManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<CustomerManager>().FromComponentInHierarchy().AsSingle().NonLazy();
-            Container.Bind<OfflineProgressManager>().FromComponentInHierarchy().AsSingle().NonLazy();
+            //Container.Bind<OfflineProgressManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<AutoWorkerManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             //Container.Bind<UpgradeManager>().FromComponentInHierarchy().AsSingle().NonLazy();
 

@@ -13,7 +13,10 @@ namespace MilkFarm
         [Inject] private SaveManager saveManager;
 
         // === GEM SYSTEM ===
-
+        private void Start()
+        {
+            AddGems(100);
+        }
         public int GetCurrentGems()
         {
             if (saveManager == null)
