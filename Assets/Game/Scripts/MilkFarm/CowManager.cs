@@ -71,11 +71,20 @@ namespace MilkFarm
         private void OnEnable()
         {
             MilkFarmEvents.OnCowUnlocked += HandleCowUnlocked;
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested; // ✅ YENİ
         }
 
         private void OnDisable()
         {
             MilkFarmEvents.OnCowUnlocked -= HandleCowUnlocked;
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested; // ✅ YENİ
+        }
+
+        // ✅ Class sonuna EKLE:
+
+        private void HandleSaveRequested()
+        {
+            SaveToData();
         }
         private void InitializeCows()
         {

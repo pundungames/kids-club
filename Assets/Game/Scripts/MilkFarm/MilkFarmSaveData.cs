@@ -11,16 +11,18 @@ namespace MilkFarm
     public class CowSaveData
     {
         public bool isUnlocked;
-        public int level;
         public int storedMilk;
         public float productionTimer;
+        public int globalIndex;
+        public int level;
 
-        public CowSaveData()
+        public CowSaveData(int index, bool unlocked = false)
         {
-            isUnlocked = false;
-            level = 1;
+            globalIndex = index;
+            isUnlocked = unlocked;
             storedMilk = 0;
             productionTimer = 0f;
+            level = 1;
         }
     }
 
@@ -30,6 +32,9 @@ namespace MilkFarm
     [Serializable]
     public class StationSaveData
     {
+        public TroughSaveData feedTrough = new TroughSaveData();
+        public TroughSaveData waterTrough = new TroughSaveData();
+
         public float foodFill;
         public float waterFill;
         public float feedingTimer;
@@ -37,10 +42,27 @@ namespace MilkFarm
 
         public StationSaveData()
         {
+            feedTrough = new TroughSaveData();
+            waterTrough = new TroughSaveData();
+
+            // Başlangıçta dolu
             foodFill = 1f;
             waterFill = 1f;
-            feedingTimer = 30f;
-            wateringTimer = 30f;
+            feedingTimer = 300f; // 5 dakika
+            wateringTimer = 300f;
+        }
+    }
+
+    [Serializable]
+    public class TroughSaveData
+    {
+        public float currentAmount;
+        public float maxCapacity;
+
+        public TroughSaveData()
+        {
+            currentAmount = 100f; // Başlangıç doluluk
+            maxCapacity = 100f;
         }
     }
 
@@ -62,78 +84,106 @@ namespace MilkFarm
         }
     }
 
-
     /// <summary>
     /// IAP durumları
     /// </summary>
     [Serializable]
     public class IAPSaveData
     {
-        // IAP Boosts
-        public bool hasAutoFeeder = false;
-        public bool hasAutoWorker = false;
-        public int speedTier = 0;
-        public int richCustomerTier = 0;
-        public int milkStorageBoostLevel = 0;
-        public int gems = 0;
-
-        // Unlocks
+        public int gems;
+        public List<int> unlockedCows = new List<int>();
         public List<int> unlockedAreas = new List<int>();
         public List<int> unlockedTroughs = new List<int>();
-        public List<int> unlockedCows = new List<int>(); // Sadece cow unlock
 
-        // NOT: unlockedSlots KALDIRILDI - Slot unlock yok artık
+        public bool hasAutoWorker;
+        public bool hasAutoFeeder;
+        public int speedTier;
+        public int richCustomerTier;
+        public int milkStorageBoostLevel;
+
+        public IAPSaveData()
+        {
+            gems = 200; // Başlangıç gem'i
+            unlockedCows = new List<int>();
+            unlockedAreas = new List<int>();
+            unlockedTroughs = new List<int>();
+        }
     }
+
     /// <summary>
-    /// Ana save data sınıfı
+    /// Ana save data sınıfı - INITIALIZED
     /// </summary>
     [Serializable]
     public class MilkFarmSaveData
     {
-        // Versiyon bilgisi
-        public int saveVersion = 1;
-
-        // Temel bilgiler
+        // Money
         public float currentMoney;
+
+        // Cows
+        public List<CowSaveData> cows = new List<CowSaveData>();
+
+        // Stations (Troughs)
+        public List<StationSaveData> stations = new List<StationSaveData>();
+
+        // Packaging
+        public PackageSaveData packaging = new PackageSaveData();
+
+        // IAP
+        public IAPSaveData iap = new IAPSaveData();
+
+        // Timestamps
         public long lastSaveTimestamp;
+        public long lastPlayTime;
 
-        // İnekler
-        public List<CowSaveData> cows;
-
-        // İstasyonlar
-        public List<StationSaveData> stations;
-
-        // Paketleme
-        public PackageSaveData packaging;
-
-        // IAP durumları
-        public IAPSaveData iap;
-
+        /// <summary>
+        /// Constructor - Yeni save için initialization
+        /// </summary>
         public MilkFarmSaveData()
         {
-            saveVersion = 1;
             currentMoney = 0f;
-            lastSaveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            packaging = new PackageSaveData();
+            iap = new IAPSaveData();
+            lastSaveTimestamp = 0;
+            lastPlayTime = 0;
 
-            // 12 inek
+            // ✅ 12 inek initialize et (ilk inek unlocked)
+            InitializeCows(12, true); // İlk inek unlocked
+
+            // ✅ 4 istasyon initialize et
+            InitializeStations(4);
+
+            Debug.Log("[MilkFarmSaveData] Yeni save oluşturuldu: 12 inek, 4 istasyon (İlk inek unlocked)");
+        }
+
+        /// <summary>
+        /// İnekleri initialize et
+        /// </summary>
+        private void InitializeCows(int count, bool firstUnlocked = true)
+        {
             cows = new List<CowSaveData>();
-            for (int i = 0; i < 12; i++)
+
+            for (int i = 0; i < count; i++)
             {
-                cows.Add(new CowSaveData());
+                bool unlocked = (i == 0 && firstUnlocked); // İlk inek unlocked
+                cows.Add(new CowSaveData(i, unlocked));
             }
 
-            // İlk inek açık
-            cows[0].isUnlocked = true;
+            Debug.Log($"[MilkFarmSaveData] {count} inek initialize edildi. İlk inek: {(firstUnlocked ? "UNLOCKED" : "locked")}");
+        }
 
-            // 3 istasyon
+        /// <summary>
+        /// İstasyonları initialize et
+        /// </summary>
+        private void InitializeStations(int count)
+        {
             stations = new List<StationSaveData>();
-            for (int i = 0; i < 3; i++)
+
+            for (int i = 0; i < count; i++)
             {
                 stations.Add(new StationSaveData());
             }
 
-            packaging = new PackageSaveData();
-            iap = new IAPSaveData();
+            Debug.Log($"[MilkFarmSaveData] {count} istasyon initialize edildi (dolu)");
         }
     }
 }

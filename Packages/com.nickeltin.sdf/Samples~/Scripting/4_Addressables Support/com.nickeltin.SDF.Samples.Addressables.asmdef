@@ -1,0 +1,26 @@
+{
+    "name": "com.nickeltin.SDF.Samples.Addressables",
+    "rootNamespace": "",
+    "references": [
+        "com.nickeltin.SDF.Samples",
+        "nickeltin.SDF.Runtime",
+        "Unity.Addressables",
+        "Unity.ResourceManager",
+        "Unity.Addressables.Editor"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.addressables",
+            "expression": "",
+            "define": "ADDRESSABLES"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -67,7 +67,19 @@ namespace MilkFarm
         {
             LoadFromSaveData();
         }
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested;
+        }
 
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested;
+        }
+        private void HandleSaveRequested()
+        {
+            SaveToData();
+        }
         private void InitializeStations()
         {
             // 12 inek / 3 inek per station = 4 istasyon
@@ -199,15 +211,28 @@ namespace MilkFarm
             for (int i = 0; i < stations.Count && i < saveData.stations.Count; i++)
             {
                 var stationData = saveData.stations[i];
+
+                // Station data
                 stations[i].foodFill = stationData.foodFill;
                 stations[i].waterFill = stationData.waterFill;
                 stations[i].feedingTimer = stationData.feedingTimer;
                 stations[i].wateringTimer = stationData.wateringTimer;
 
+                // ✅ YENİ: Trough controller'lara load
+                if (stations[i].feedTroughController != null)
+                {
+                    stations[i].feedTroughController.LoadFromSaveData(stationData.feedTrough);
+                }
+
+                if (stations[i].waterTroughController != null)
+                {
+                    stations[i].waterTroughController.LoadFromSaveData(stationData.waterTrough);
+                }
+
                 UpdateStationVisuals(i);
             }
 
-            Debug.Log($"[StationManager] {stations.Count} istasyon yüklendi.");
+            Debug.Log($"[StationManager] 📂 {stations.Count} istasyon yüklendi (Trough dahil)");
         }
 
         /// <summary>
@@ -219,15 +244,27 @@ namespace MilkFarm
 
             for (int i = 0; i < stations.Count; i++)
             {
+                // Station data
                 saveData.stations[i].foodFill = stations[i].foodFill;
                 saveData.stations[i].waterFill = stations[i].waterFill;
                 saveData.stations[i].feedingTimer = stations[i].feedingTimer;
                 saveData.stations[i].wateringTimer = stations[i].wateringTimer;
+
+                // ✅ YENİ: Trough controller'lardan save
+                if (stations[i].feedTroughController != null)
+                {
+                    stations[i].feedTroughController.SaveToData(saveData.stations[i].feedTrough);
+                }
+
+                if (stations[i].waterTroughController != null)
+                {
+                    stations[i].waterTroughController.SaveToData(saveData.stations[i].waterTrough);
+                }
             }
 
             saveManager.SaveGame(saveData);
+            Debug.Log($"[StationManager] 💾 {stations.Count} istasyon kaydedildi (Trough dahil)");
         }
-
         private void Update()
         {
             UpdateAllStations(Time.deltaTime);

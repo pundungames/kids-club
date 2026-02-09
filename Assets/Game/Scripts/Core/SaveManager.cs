@@ -9,25 +9,6 @@ namespace MilkFarm
     /// </summary>
     public class SaveManager : MonoBehaviour
     {
-      /*  private static SaveManager _instance;
-        public static SaveManager Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = FindObjectOfType<SaveManager>();
-                    if (_instance == null)
-                    {
-                        GameObject obj = new GameObject("SaveManager");
-                        _instance = obj.AddComponent<SaveManager>();
-                        DontDestroyOnLoad(obj);
-                    }
-                }
-                return _instance;
-            }
-        }*/
-
         private const string SAVE_KEY = "MilkFarm_SaveData_v1";
         private MilkFarmSaveData _currentSaveData;
 
@@ -142,14 +123,23 @@ namespace MilkFarm
 
         private void OnApplicationPause(bool pauseStatus)
         {
-            if (pauseStatus && _currentSaveData != null)
+            if (pauseStatus)
             {
-                SaveGame(_currentSaveData);
+                Debug.Log("[SaveManager] 🔔 Pause - Triggering save event");
+                MilkFarmEvents.SaveRequested(); // ✅ Event fire
+
+                if (_currentSaveData != null)
+                {
+                    SaveGame(_currentSaveData);
+                }
             }
         }
 
         private void OnApplicationQuit()
         {
+            Debug.Log("[SaveManager] 🔔 Quit - Triggering save event");
+            MilkFarmEvents.SaveRequested(); // ✅ Event fire
+
             if (_currentSaveData != null)
             {
                 SaveGame(_currentSaveData);

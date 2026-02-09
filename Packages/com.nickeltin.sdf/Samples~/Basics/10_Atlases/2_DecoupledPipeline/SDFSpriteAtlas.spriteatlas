@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: SDFSpriteAtlas
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings:
+    - serializedVersion: 3
+      m_BuildTarget: DefaultTexturePlatform
+      m_MaxTextureSize: 2048
+      m_ResizeAlgorithm: 0
+      m_TextureFormat: 1
+      m_TextureCompression: 1
+      m_CompressionQuality: 50
+      m_CrunchedCompression: 0
+      m_AllowsAlphaSplitting: 0
+      m_Overridden: 0
+      m_AndroidETC2FallbackOverride: 0
+      m_ForceMaximumCompressionQuality_BC6H_BC7: 0
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 1
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 102900000, guid: 0f421a1e5fa0c004d87c6ffc5aa64a9b, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: -8795714446402381204, guid: 1cbb1e215c386e04ebabc3b61ad6adae, type: 3}
+  - {fileID: -8795714446402381204, guid: 319425a147bb8e74aae510f265672d3e, type: 3}
+  - {fileID: -8795714446402381204, guid: dca264d247726a741ad307264a3e3cb2, type: 3}
+  - {fileID: -8795714446402381204, guid: 05d35d25465798c4bad3583172b3cea8, type: 3}
+  - {fileID: -8795714446402381204, guid: 41a1c4c8371925147b41150bf80bd10e, type: 3}
+  - {fileID: -8795714446402381204, guid: 1b755f7be92458948b4c2fd03d4c1464, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - pizza(SDFSprite)
+  - maple-syrup(SDFSprite)
+  - pretzel(SDFSprite)
+  - afternoon-tea(SDFSprite)
+  - ramen(SDFSprite)
+  - sushi(SDFSprite)
+  m_RenderDataMap: {}
+  m_Tag: SDFSpriteAtlas
+  m_IsVariant: 0

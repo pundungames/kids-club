@@ -1,0 +1,92 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4183186224630001724
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4183186224630001725}
+  - component: {fileID: 4183186224630001727}
+  - component: {fileID: 4183186224630001726}
+  m_Layer: 5
+  m_Name: GlowBorder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &4183186224630001725
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4183186224630001724}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 100, y: 0}
+  m_SizeDelta: {x: 500, y: 0}
+  m_Pivot: {x: 0, y: 0.5}
+--- !u!222 &4183186224630001727
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4183186224630001724}
+  m_CullTransparentMesh: 1
+--- !u!114 &4183186224630001726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4183186224630001724}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5337f7824bd045cf8d0df0e1c7a3bf8d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 2100000, guid: 14136a8556c50de47a45b5fbd8e06566, type: 2}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  _legacySprite: {fileID: 0}
+  _sdfRendererSettings:
+    MainColor: {r: 1, g: 1, b: 1, a: 1}
+    RenderRegular: 0
+    RegularColor: {r: 1, g: 1, b: 1, a: 1}
+    RenderOutline: 1
+    OutlineColor: {r: 0, g: 1, b: 0.8785672, a: 1}
+    OutlineWidth: 0.5
+    RenderShadow: 0
+    ShadowColor: {r: 0, g: 0, b: 0, a: 0.5}
+    ShadowWidth: 0.75
+    ShadowOffset: {x: 10, y: -10}
+  _sdfSpriteReference:
+    _sourceSprite: {fileID: 21300000, guid: 5ebbb409b3e305745b4d94b3dc88c51e, type: 3}
+    _metadataAsset: {fileID: 4841691349494579287, guid: 5ebbb409b3e305745b4d94b3dc88c51e, type: 3}
+  _imageType: 1
+  _preserveAspect: 0
+  _fillCenter: 1
+  _fillMethod: 4
+  _fillAmount: 1
+  _fillClockwise: 1
+  _fillOrigin: 0
+  _useSpriteMesh: 0
+  _pixelsPerUnitMultiplier: 1

@@ -1,0 +1,19 @@
+﻿{
+  "name": "com.nickeltin.core",
+  "version": "1.2.9",
+  "displayName": "Nickeltin Core",
+  "description": "Core used by many nickeltin-lib modules",
+  "unity": "2021.1",
+  "dependencies": { 
+    "com.unity.ugui":"1.0.0",
+    "com.unity.editorcoroutines":"1.0.0"
+  },
+  "keywords": [
+    "nickeltin"
+  ],
+  "author": {
+    "name": "nickeltin",
+    "email": "nickeltin2@gmail.com"
+  },
+  "hideInEditor": false
+}

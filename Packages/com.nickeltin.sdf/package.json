@@ -1,0 +1,41 @@
+﻿{
+  "name": "com.nickeltin.sdf",
+  "version": "1.3.2",
+  "displayName": "Nickeltin SDF Image",
+  "description": "Quality and fast UI outlines, shadows",
+  "unity": "2021.1",
+  "documentationUrl": "https://nickeltin.notion.site/sdf-samples-public-0d64c50415a54fafbe754f79ac4b34f7",
+  "dependencies": { 
+    "com.unity.2d.sprite" : "1.0.0",
+    "com.nickeltin.core": "1.2.9",
+    "com.unity.collections": "2.4.2",
+    "com.unity.burst": "1.8.21",
+    "com.unity.mathematics": "1.2.6"
+  },
+  "keywords": [
+    "nickeltin"
+  ],
+  "author": {
+    "name": "nickeltin",
+    "email": "nickeltin2@gmail.com",
+    "url": "https://nickeltin1.github.io/sdf-image/"
+  },
+  "samples": [
+    {
+      "displayName": "Basics",
+      "description": "Step by step introduction to asset",
+      "path": "Samples~/Basics"
+    },
+    {
+      "displayName": "Scripting",
+      "description": "More in depth view with public API script interactions",
+      "path": "Samples~/Scripting"
+    },
+    {
+      "displayName": "StoreMedia",
+      "description": "Scenes made with SDFImage used in its asset store page",
+      "path": "Samples~/StoreMedia"
+    }
+  ],
+  "hideInEditor": false
+}

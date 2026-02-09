@@ -14,18 +14,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxCowSlots: 12
   cowsPerStation: 3
-  baseMilkProductionTime: 0.5
+  baseProductionTime: 30
   baseMilkStorageLimit: 6
   tapHoldSpeedMultiplier: 0.75
   minProductionTime: 0.2
+  maxMilkStack: 6
+  baseTroughConsumption: 1
+  offlineBaseProductionTime: 600
   packageSize: 4
   packageStationCapacityBase: 8
   customerQueueMax: 4
   customerMinRequest: 1
   customerMaxRequest: 4
   moneyPerMilk: 1
-  feedingInterval: 30
-  wateringInterval: 30
+  feedingInterval: 20
+  wateringInterval: 20
   feedingTapFill: 0.25
   wateringTapFill: 0.25
   baseCostCow: 50

@@ -1,0 +1,28 @@
+{
+    "name": "nickeltin.SDF.Editor",
+    "rootNamespace": "",
+    "references": [
+        "nickeltin.Core.Editor",
+        "nickeltin.Core.Runtime",
+        "nickeltin.SDF.Runtime",
+        "Unity.2D.Sprite.Editor",
+        "Unity.EditorCoroutines.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "Unity",
+            "expression": "2023.1",
+            "define": "SDF_NEW_SPRITE_METADATA"
+        }
+    ],
+    "noEngineReferences": false
+}

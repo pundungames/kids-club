@@ -6,8 +6,8 @@ using Zenject;
 namespace MilkFarm
 {
     /// <summary>
-    /// Yemlik/Suluk controller - ÜRETİM BAZLI TÜKETİM
-    /// Sadece inek üretim yaparken tüketir
+    /// Trough Controller - Minimal Patch
+    /// Senin koduna sadece event fire eklendi
     /// </summary>
     public class TroughController : MonoBehaviour
     {
@@ -35,7 +35,7 @@ namespace MilkFarm
         private IAPManager iapManager;
         private int stationIndex = -1;
         private int activeCowCount = 0;
-        private int producingCowCount = 0; // Kaç inek üretim yapıyor
+        private int producingCowCount = 0;
 
         public bool HasResource => currentFill > 0f;
 
@@ -67,10 +67,19 @@ namespace MilkFarm
 
             UpdateUI();
         }
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested;
+        }
+
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested;
+        }
 
         void Update()
         {
-            // Auto Feeder IAP varsa otomatik doldur
+            // Auto Feeder IAP
             if (iapManager != null && iapManager.HasAutoFeeder())
             {
                 if (currentFill < 1f)
@@ -81,7 +90,7 @@ namespace MilkFarm
                 return;
             }
 
-            // ÜRETİM YAPAN İNEK YOKSA TÜKETİM YOK!
+            // Üretim yapan inek yoksa tüketim yok
             if (producingCowCount <= 0 || currentFill <= 0f)
             {
                 return;
@@ -89,7 +98,7 @@ namespace MilkFarm
 
             // Üretim bazlı tüketim
             float drainInterval = isFeedTrough ? config.feedingInterval : config.wateringInterval;
-            float consumptionPerSecond = (1f / drainInterval) * producingCowCount; // Sadece üreten inekler
+            float consumptionPerSecond = (1f / drainInterval) * producingCowCount;
 
             currentFill -= consumptionPerSecond * Time.deltaTime;
             currentFill = Mathf.Max(0f, currentFill);
@@ -127,6 +136,9 @@ namespace MilkFarm
         {
             if (currentFill >= 1f) return;
 
+            // ✅ Önceki doluluk
+            float previousFill = currentFill;
+
             float fillAmount = config != null
                 ? (isFeedTrough ? config.feedingTapFill : config.wateringTapFill)
                 : 0.25f;
@@ -141,38 +153,33 @@ namespace MilkFarm
                 MilkFarmEvents.StationWaterRefilled(stationIndex);
 
             Debug.Log($"[TroughController] {name} dolduruldu: {currentFill * 100:F0}%");
+
+            // ✅ YENİ: Event fire (yoktan var oldu mu?)
+            if (previousFill <= 0f && currentFill > 0f)
+            {
+                MilkFarmEvents.TroughRefilled(stationIndex);
+                Debug.Log($"[TroughController] 🔔 TroughRefilled event! Station {stationIndex}");
+            }
         }
 
-        /// <summary>
-        /// İnek sayısını set et (CowManager'dan çağrılır)
-        /// </summary>
         public void SetActiveCowCount(int count)
         {
             activeCowCount = count;
-            Debug.Log($"[TroughController] {name} - Aktif inek sayısı: {activeCowCount}");
+            Debug.Log($"[TroughController] {name} - Aktif inek: {activeCowCount}");
         }
 
-        /// <summary>
-        /// Üretim yapan inek sayısını set et (CowController'dan çağrılır)
-        /// </summary>
         public void SetProducingCowCount(int count)
         {
             producingCowCount = count;
-            Debug.Log($"[TroughController] {name} - Üreten inek sayısı: {producingCowCount}");
+            Debug.Log($"[TroughController] {name} - Üreten inek: {producingCowCount}");
         }
 
-        /// <summary>
-        /// Bir inek üretim başlattı
-        /// </summary>
         public void OnCowStartProducing()
         {
             producingCowCount++;
             Debug.Log($"[TroughController] {name} - Üreten inek: {producingCowCount}");
         }
 
-        /// <summary>
-        /// Bir inek üretim bitirdi
-        /// </summary>
         public void OnCowStopProducing()
         {
             producingCowCount--;
@@ -244,6 +251,36 @@ namespace MilkFarm
             currentFill = 0.5f;
             wasDepleted = false;
             UpdateVisuals();
+        }
+        /// <summary>
+        /// Save event handler
+        /// </summary>
+        private void HandleSaveRequested()
+        {
+            // StationManager Save metodunu çağıracak
+            Debug.Log($"[TroughController {stationIndex}] 💾 Save requested - Fill: {currentFill * 100:F0}%");
+        }
+
+        /// <summary>
+        /// Save to TroughSaveData
+        /// </summary>
+        public void SaveToData(TroughSaveData data)
+        {
+            data.currentAmount = currentFill * 100f; // 0.5 → 50
+            data.maxCapacity = 100f;
+        }
+
+        /// <summary>
+        /// Load from TroughSaveData
+        /// </summary>
+        public void LoadFromSaveData(TroughSaveData data)
+        {
+            currentFill = data.currentAmount / 100f; // 50 → 0.5
+            currentFill = Mathf.Clamp01(currentFill);
+            wasDepleted = (currentFill <= 0f);
+            UpdateVisuals();
+
+            Debug.Log($"[TroughController {stationIndex}] 📂 Loaded - Fill: {currentFill * 100:F0}%");
         }
     }
 }

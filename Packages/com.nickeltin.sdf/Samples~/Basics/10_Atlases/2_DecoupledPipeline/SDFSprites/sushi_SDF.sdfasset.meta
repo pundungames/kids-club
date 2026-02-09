@@ -1,0 +1,20 @@
+fileFormatVersion: 2
+guid: 1b755f7be92458948b4c2fd03d4c1464
+ScriptedImporter:
+  internalIDToNameTable:
+  - first:
+      114: -8445036440928941807
+    second: 4b104a690e0b71080f518adc5c122162
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: adc6ad754b574ae09e8a65906091eb66, type: 3}
+  _importSettings:
+    GradientSize: 0.2
+    GenerateSDF: 1
+    SDFGenerationBackend: legacy
+    BorderOffset: 64
+    ResolutionScale: 0.1
+  _texture: {fileID: 2800000, guid: 8027be53427336f40b3da9b670c8ca20, type: 3}

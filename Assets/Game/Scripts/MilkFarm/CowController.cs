@@ -6,6 +6,10 @@ using Zenject;
 
 namespace MilkFarm
 {
+    /// <summary>
+    /// Cow Controller - Timer Save/Resume
+    /// Kaynak bitince timer durur, geri gelince kaldığı yerden devam eder
+    /// </summary>
     public class CowController : MonoBehaviour
     {
         private PackageManager packageManager;
@@ -15,13 +19,13 @@ namespace MilkFarm
         [Header("Görsel Ayarlar")]
         [SerializeField] private Image progressBar;
         [SerializeField] private GameObject timerCanvas;
-        [SerializeField] private GameObject milkIndicator; // Stack UI (Canvas)
-        [SerializeField] private TextMeshProUGUI milkCountText; // "3" şişe var
+        [SerializeField] private GameObject milkIndicator;
+        [SerializeField] private TextMeshProUGUI milkCountText;
         [SerializeField] private GameObject needsIndicator;
 
         [Header("Üretim Ayarları")]
         [SerializeField] private float baseTimePerMilk = 30f;
-        [SerializeField] private int maxMilkStack = 6; // Milk case kapasitesi
+        [SerializeField] private int maxMilkStack = 6;
 
         private bool isProducing = false;
         private bool isHolding = false;
@@ -31,23 +35,29 @@ namespace MilkFarm
         private GameConfig config;
         private IAPManager iapManager;
 
-        // Stack (manuel toplama için)
-        private int milkStack = 0; // Üretilip bekleyen süt sayısı
+        private int milkStack = 0;
+        private Coroutine productionCoroutine;
 
-        public void SetFeedTrough(TroughController trough)
+        // ✅ YENİ: Timer save/resume için
+        private float savedTimer = 0f; // Kalan süre (saniye)
+        private bool isPaused = false;  // Pause durumu
+
+        private void OnEnable()
         {
-            feedTrough = trough;
+            MilkFarmEvents.OnTroughRefilled += HandleTroughRefilled;
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested; // ✅ YENİ
         }
 
-        public void SetWaterTrough(TroughController trough)
+        private void OnDisable()
         {
-            waterTrough = trough;
+            MilkFarmEvents.OnTroughRefilled -= HandleTroughRefilled;
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested; // ✅ YENİ
         }
 
-        public void SetPackageManager(PackageManager manager)
-        {
-            packageManager = manager;
-        }
+
+        public void SetFeedTrough(TroughController trough) => feedTrough = trough;
+        public void SetWaterTrough(TroughController trough) => waterTrough = trough;
+        public void SetPackageManager(PackageManager manager) => packageManager = manager;
 
         public void Initialize(int index, Cow data, GameConfig gameConfig, IAPManager iap)
         {
@@ -60,30 +70,109 @@ namespace MilkFarm
             if (milkIndicator != null) milkIndicator.SetActive(false);
             if (needsIndicator != null) needsIndicator.SetActive(false);
 
+            // ✅ YENİ: Saved data'dan restore
+            RestoreFromSaveData();
+
             UpdateMilkUI();
 
-            Debug.Log($"[CowController {cowIndex}] Initialize edildi.");
+            Debug.Log($"[CowController {cowIndex}] Initialized - Stack: {milkStack}, Timer: {savedTimer:F1}s");
         }
 
-        // === INPUT SİSTEMİ ===
+        // ✅ YENİ METOD EKLE (Initialize'dan sonra):
+
+        /// <summary>
+        /// Save data'dan timer ve stack restore et
+        /// </summary>
+        private void RestoreFromSaveData()
+        {
+            if (cowData == null) return;
+
+            // Milk stack restore
+            milkStack = cowData.currentMilk;
+
+            // Timer restore
+            savedTimer = cowData.productionTimer;
+
+            // Timer varsa ve kaynak varsa auto-start
+            if (savedTimer > 0f || milkStack < maxMilkStack)
+            {
+                // Kaynak kontrolü
+                if (feedTrough != null && waterTrough != null)
+                {
+                    if (feedTrough.HasResource && waterTrough.HasResource)
+                    {
+                        // Kısa delay sonra başlat (Start sonrası için)
+                        StartCoroutine(DelayedAutoStart());
+                    }
+                    else
+                    {
+                        // Kaynak yok, pause durumunda başlat
+                        isPaused = true;
+                        Debug.Log($"[CowController {cowIndex}] 📂 Loaded paused (no resource) - Timer: {savedTimer:F1}s");
+                    }
+                }
+            }
+
+            Debug.Log($"[CowController {cowIndex}] 📂 Restored - Milk: {milkStack}, Timer: {savedTimer:F1}s, Paused: {isPaused}");
+        }
+
+        /// <summary>
+        /// Kısa delay sonra production başlat
+        /// </summary>
+        private System.Collections.IEnumerator DelayedAutoStart()
+        {
+            yield return new WaitForSeconds(0.1f); // Frame delay
+
+            if (!isProducing && !isPaused)
+            {
+                Debug.Log($"[CowController {cowIndex}] 🔄 Auto-starting production (from save)");
+                TryStartProduction();
+            }
+        }
+
+        private void HandleTroughRefilled(int stationIndex)
+        {
+            int myStation = cowIndex / (config != null ? config.cowsPerStation : 3);
+            if (stationIndex != myStation) return;
+
+            Debug.Log($"[CowController {cowIndex}] Trough refill algılandı!");
+
+            // ✅ Pause durumundaysa RESUME
+            if (isPaused)
+            {
+                if (feedTrough != null && waterTrough != null)
+                {
+                    if (feedTrough.HasResource && waterTrough.HasResource)
+                    {
+                        Debug.Log($"[CowController {cowIndex}] ✅ RESUME! Kalan timer: {savedTimer:F1}s");
+                        ResumeProduction();
+                    }
+                }
+            }
+            // Üretim hiç başlamamışsa start
+            else if (!isProducing && milkStack < maxMilkStack)
+            {
+                if (feedTrough != null && waterTrough != null)
+                {
+                    if (feedTrough.HasResource && waterTrough.HasResource)
+                    {
+                        TryStartProduction();
+                    }
+                }
+            }
+        }
 
         void OnMouseDown()
         {
             isHolding = true;
 
-            // Package manager max stack kontrolü
-            if (IsPackageManagerFull())
-            {
-                Debug.LogWarning($"[CowController {cowIndex}] Paketleme dolu! Tap yapılamaz.");
-                return;
-            }
+            if (IsPackageManagerFull()) return;
 
-            // Eğer süt varsa topla, yoksa üretim başlat
             if (milkStack > 0)
             {
                 CollectMilk();
             }
-            else if (!isProducing)
+            else if (!isProducing && !isPaused)
             {
                 TryStartProduction();
             }
@@ -91,115 +180,130 @@ namespace MilkFarm
 
         public void OnClicked()
         {
-            if (IsPackageManagerFull())
-            {
-                Debug.LogWarning($"[CowController {cowIndex}] Paketleme dolu!");
-                return;
-            }
+            if (IsPackageManagerFull()) return;
 
             if (milkStack > 0)
             {
                 CollectMilk();
             }
-            else if (!isProducing)
+            else if (!isProducing && !isPaused)
             {
                 TryStartProduction();
             }
         }
 
-        /// <summary>
-        /// Package manager dolu mu kontrol et
-        /// </summary>
         private bool IsPackageManagerFull()
         {
             if (packageManager == null) return false;
-
-            // Production stack count + current active case
             int totalCases = packageManager.GetProductionStackCount();
             if (packageManager.HasActiveCrate()) totalCases++;
-
-            return totalCases >= 8; // Max limit
+            return totalCases >= 8;
         }
 
         void OnMouseUp() { isHolding = false; }
         void OnMouseExit() { isHolding = false; }
 
-        // === ÜRETİM ===
-
         void TryStartProduction()
         {
             if (feedTrough == null || waterTrough == null)
             {
-                Debug.LogError($"[CowController {cowIndex}] Yemlik/Suluk yok!");
                 ShowNeedsIndicator(true);
                 return;
             }
 
             if (feedTrough.HasResource && waterTrough.HasResource)
             {
-                StartCoroutine(ProductionRoutine());
+                productionCoroutine = StartCoroutine(ProductionRoutine());
             }
             else
             {
-                Debug.Log($"[CowController {cowIndex}] Yem/su yok!");
                 ShowNeedsIndicator(true);
             }
         }
 
+        /// <summary>
+        /// Resume production (pause'dan devam)
+        /// </summary>
+        void ResumeProduction()
+        {
+            if (!isPaused) return;
+
+            isPaused = false;
+            ShowNeedsIndicator(false);
+
+            // Coroutine restart (kalan timer ile)
+            productionCoroutine = StartCoroutine(ProductionRoutine());
+        }
+
+        // ✅ CowController.cs - ProductionRoutine'i DEĞİŞTİR:
+
         IEnumerator ProductionRoutine()
         {
             isProducing = true;
+            isPaused = false;
+
             if (timerCanvas != null) timerCanvas.SetActive(true);
             ShowNeedsIndicator(false);
 
-            // Trough'a bildir: Üretim başladı
             if (feedTrough != null) feedTrough.OnCowStartProducing();
             if (waterTrough != null) waterTrough.OnCowStartProducing();
 
-            // Sonsuz döngü - stack dolana kadar
             while (true)
             {
-                // Stack doluysa dur
                 if (milkStack >= maxMilkStack)
                 {
-                    Debug.Log($"[CowController {cowIndex}] Stack dolu ({maxMilkStack}), üretim durdu.");
+                    Debug.Log($"[CowController {cowIndex}] Stack dolu");
                     break;
                 }
 
-                // Package manager doluysa dur
                 if (IsPackageManagerFull())
                 {
-                    Debug.Log($"[CowController {cowIndex}] Paketleme dolu, üretim durdu.");
+                    Debug.Log($"[CowController {cowIndex}] Paketleme dolu");
                     break;
                 }
 
                 float productionTime = CalculateProductionTime();
-                float timer = 0f;
+
+                // ✅ Saved timer varsa ondan başla, yoksa sıfırdan
+                float timer = savedTimer > 0 ? savedTimer : 0f;
+                savedTimer = 0f; // Reset
+
+                // ✅ YENİ: ProgressBar'ı başlangıç değerine set et
+                if (progressBar != null && timer > 0f)
+                {
+                    progressBar.fillAmount = timer / productionTime;
+                    Debug.Log($"[CowController {cowIndex}] ProgressBar restored: {progressBar.fillAmount * 100:F0}%");
+                }
+
+                Debug.Log($"[CowController {cowIndex}] Timer başlatıldı: {timer:F1}s / {productionTime:F1}s");
 
                 while (timer < productionTime)
                 {
-                    // Yem/su kontrol
+                    // Kaynak kontrolü
                     if (feedTrough != null && waterTrough != null)
                     {
                         if (!feedTrough.HasResource || !waterTrough.HasResource)
                         {
+                            // ✅ PAUSE: Timer'ı kaydet
+                            savedTimer = timer;
+                            isPaused = true;
+
                             ShowNeedsIndicator(true);
 
-                            // Trough'a bildir: Üretim durdu
                             if (feedTrough != null) feedTrough.OnCowStopProducing();
                             if (waterTrough != null) waterTrough.OnCowStopProducing();
 
                             isProducing = false;
                             if (timerCanvas != null) timerCanvas.SetActive(false);
+
+                            Debug.Log($"[CowController {cowIndex}] ⚠️ PAUSE! Timer: {savedTimer:F1}s / {productionTime:F1}s");
                             yield break;
                         }
                     }
 
-                    // Package manager kontrol (üretim sırasında)
                     if (IsPackageManagerFull())
                     {
-                        Debug.Log($"[CowController {cowIndex}] Paketleme doldu, üretim durduruluyor.");
-                        break; // İç döngüden çık
+                        break;
                     }
 
                     float speedMultiplier = isHolding && config != null
@@ -208,37 +312,36 @@ namespace MilkFarm
 
                     timer += Time.deltaTime * speedMultiplier;
 
+                    // ✅ ProgressBar güncelle
                     if (progressBar != null)
                         progressBar.fillAmount = timer / productionTime;
 
                     yield return null;
                 }
 
-                // Package manager doluysa çık
                 if (IsPackageManagerFull())
                 {
-                    break; // Dış döngüden çık
+                    break;
                 }
 
-                // 1 şişe üretildi!
                 ProduceMilk();
             }
 
-            // Stack dolu veya paketleme dolu, üretim durdu
-            // Trough'a bildir: Üretim bitti
             if (feedTrough != null) feedTrough.OnCowStopProducing();
             if (waterTrough != null) waterTrough.OnCowStopProducing();
 
             isProducing = false;
+            isPaused = false;
+            savedTimer = 0f;
+
             if (timerCanvas != null) timerCanvas.SetActive(false);
         }
-
         private float CalculateProductionTime()
         {
             if (config == null || cowData == null)
                 return baseTimePerMilk;
 
-            float baseTime = config.baseMilkProductionTime;
+            float baseTime = config.baseProductionTime;
             float levelMultiplier = Mathf.Pow(0.9f, cowData.level - 1);
             float leveledTime = baseTime * levelMultiplier;
 
@@ -252,57 +355,33 @@ namespace MilkFarm
             return leveledTime;
         }
 
-        /// <summary>
-        /// Süt üret (stack'e ekle, otomatik kasaya ATMA)
-        /// </summary>
         private void ProduceMilk()
         {
-            milkStack++; // Stack artır
-
-            // UI'ı göster
+            milkStack++;
             UpdateMilkUI();
 
-            // CowData güncelle
             if (cowData != null)
             {
                 cowData.currentMilk = milkStack;
+
                 MilkFarmEvents.CowMilkProduced(cowIndex);
             }
 
-            Debug.Log($"[CowController {cowIndex}] Süt üretildi! Stack: {milkStack}");
+            Debug.Log($"[CowController {cowIndex}] Süt üretti! Stack: {milkStack}");
         }
 
-        /// <summary>
-        /// Süt topla (manuel - tıkla)
-        /// Stack'teki tüm sütleri kasaya at
-        /// </summary>
         public void CollectMilk()
         {
-            if (milkStack <= 0)
-            {
-                Debug.LogWarning($"[CowController {cowIndex}] Toplanacak süt yok!");
-                return;
-            }
+            if (milkStack <= 0) return;
+            if (packageManager == null) return;
 
-            if (packageManager == null)
-            {
-                Debug.LogError($"[CowController {cowIndex}] PackageManager yok!");
-                return;
-            }
-
-            // Coroutine ile sıralı gönder
             StartCoroutine(CollectMilkRoutine());
         }
 
-        /// <summary>
-        /// Süt toplama routine (sıralı animasyon için)
-        /// </summary>
         private IEnumerator CollectMilkRoutine()
         {
             int totalMilk = milkStack;
-            Debug.Log($"[CowController {cowIndex}] {totalMilk} şişe kasaya gönderiliyor...");
 
-            // Stack'i hemen sıfırla (UI kapansın)
             milkStack = 0;
             if (cowData != null)
             {
@@ -310,48 +389,36 @@ namespace MilkFarm
             }
             UpdateMilkUI();
 
-            // Her şişe için sırayla
             for (int i = 0; i < totalMilk; i++)
             {
                 packageManager.AddMilk(transform.position);
-
-                // Kısa delay (flying animasyon için)
                 yield return new WaitForSeconds(0.1f);
             }
 
             MilkFarmEvents.CowMilkCollected(cowIndex, totalMilk);
 
-            Debug.Log($"[CowController {cowIndex}] Tüm şişeler gönderildi!");
-
-            // Üretim durmuşsa yeniden başlat
-            if (!isProducing && feedTrough != null && waterTrough != null)
+            // Resume üretim
+            if (!isProducing && !isPaused && feedTrough != null && waterTrough != null)
             {
                 if (feedTrough.HasResource && waterTrough.HasResource)
                 {
-                    StartCoroutine(ProductionRoutine());
+                    TryStartProduction();
                 }
             }
         }
 
-        /// <summary>
-        /// Milk indicator UI güncelle
-        /// </summary>
         private void UpdateMilkUI()
         {
             if (milkIndicator != null)
             {
-                // Stack varsa göster, yoksa gizle
                 milkIndicator.SetActive(milkStack > 0);
             }
 
             if (milkCountText != null)
             {
-                // Sayıyı yaz
                 milkCountText.text = milkStack.ToString();
             }
         }
-
-        // === VİSUAL ===
 
         private void ShowNeedsIndicator(bool show)
         {
@@ -361,8 +428,6 @@ namespace MilkFarm
             }
         }
 
-        // === PUBLIC API ===
-
         public bool IsProducing => isProducing;
         public int GetMilkStack() => milkStack;
         public float GetProductionProgress()
@@ -371,5 +436,45 @@ namespace MilkFarm
                 return progressBar.fillAmount;
             return 0f;
         }
+
+        // === DEBUG ===
+
+        [ContextMenu("Debug: Print Status")]
+        private void DebugPrintStatus()
+        {
+            Debug.Log($"[Cow {cowIndex}] Producing: {isProducing}, Paused: {isPaused}, Timer: {savedTimer:F1}s, Stack: {milkStack}");
+        }
+        /// <summary>
+        /// Save event handler - Timer ve stack'i cowData'ya kaydet
+        /// </summary>
+        private void HandleSaveRequested()
+        {
+            if (cowData == null) return;
+
+            // Timer save (pause durumundaysa savedTimer, değilse hesapla)
+            if (isPaused)
+            {
+                cowData.productionTimer = savedTimer;
+            }
+            else if (isProducing && progressBar != null)
+            {
+                // Şu anki timer'ı hesapla (progress'ten)
+                float productionTime = CalculateProductionTime();
+                float currentProgress = progressBar.fillAmount; // 0-1
+                float elapsed = currentProgress * productionTime;
+                float remaining = productionTime - elapsed;
+                cowData.productionTimer = remaining;
+            }
+            else
+            {
+                cowData.productionTimer = 0f;
+            }
+
+            // Stack save
+            cowData.currentMilk = milkStack;
+
+            Debug.Log($"[CowController {cowIndex}] 💾 Saved - Timer: {cowData.productionTimer:F1}s, Stack: {milkStack}");
+        }
+
     }
 }

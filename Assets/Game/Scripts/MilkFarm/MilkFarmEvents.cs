@@ -13,8 +13,6 @@ namespace MilkFarm
         public static event Action<int, int> OnCowLevelUp;
         public static void CowLevelUp(int cowIndex, int newLevel) => OnCowLevelUp?.Invoke(cowIndex, newLevel);
 
-        public static event Action<int> OnCowMilkProduced;
-        public static void CowMilkProduced(int cowIndex) => OnCowMilkProduced?.Invoke(cowIndex);
 
         public static event Action<int, int> OnCowMilkCollected;
         public static void CowMilkCollected(int cowIndex, int amount) => OnCowMilkCollected?.Invoke(cowIndex, amount);
@@ -118,6 +116,25 @@ namespace MilkFarm
         public static void GemChanged()
         {
             OnGemChanged?.Invoke();
+        }
+
+        public static event System.Action<int> OnCowMilkProduced;
+        public static void CowMilkProduced(int cowIndex)
+        {
+            OnCowMilkProduced?.Invoke(cowIndex);
+        }
+
+        // ✅ EKLE (trough refill için):
+        public static event System.Action<int> OnTroughRefilled;
+        public static void TroughRefilled(int stationIndex)
+        {
+            OnTroughRefilled?.Invoke(stationIndex);
+        }
+        public static event Action OnSaveRequested;
+        public static void SaveRequested()
+        {
+            OnSaveRequested?.Invoke();
+            Debug.Log("[MilkFarmEvents] 💾 SaveRequested!");
         }
     }
 }

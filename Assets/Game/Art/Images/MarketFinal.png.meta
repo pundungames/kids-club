@@ -1,7 +1,10 @@
 fileFormatVersion: 2
 guid: 7ee0f80749054904590c4f5894628e96
 TextureImporter:
-  internalIDToNameTable: []
+  internalIDToNameTable:
+  - first:
+      114: 4841691349494579287
+    second: 1cb6f2d9cbe81b77166fef2d9df34c9b
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -106,6 +109,19 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 3
+    buildTarget: iPhone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites: []
@@ -122,6 +138,6 @@ TextureImporter:
     nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
-  userData: 
+  userData: '{"entries":[{"key":"SDFImportSettings","data":"{\"BorderOffset\":256,\"ResolutionScale\":1.0,\"GradientSize\":0.20000000298023225,\"GenerateSDF\":true,\"SDFGenerationBackend\":\"auto\"}"}]}'
   assetBundleName: 
   assetBundleVariant: 
