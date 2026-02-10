@@ -2,6 +2,7 @@ using UnityEngine;
 using Zenject;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MilkFarm
 {
@@ -53,21 +54,176 @@ namespace MilkFarm
             if (productionFullIcon != null) productionFullIcon.SetActive(false);
             if (salesFullIcon != null) salesFullIcon.SetActive(false);
         }
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested;
+        }
 
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested;
+        }
+
+        // ✅ HandleSaveRequested EKLE:
+
+        private void HandleSaveRequested()
+        {
+            SaveToData();
+        }
         public void LoadFromSaveData()
         {
             var saveData = saveManager.GetCurrentSaveData();
+
+            // Capacity
             capacityLevel = saveData.packaging.capacityLevel;
             UpdateCapacity();
+
+            // ✅ YENİ: Production stack load
+            if (saveData.packaging.productionStackBottles != null)
+            {
+                foreach (int bottleCount in saveData.packaging.productionStackBottles)
+                {
+                    if (bottleCount > 0)
+                    {
+                        SpawnCrateWithBottles(bottleCount, isActiveCase: false);
+                    }
+                }
+            }
+
+            // ✅ YENİ: Active crate load
+            if (saveData.packaging.activeCrateBottles > 0)
+            {
+                SpawnCrateWithBottles(saveData.packaging.activeCrateBottles, isActiveCase: true);
+            }
+
+            // ✅ YENİ: Sales slots load
+            if (saveData.packaging.salesSlotBottles != null)
+            {
+                for (int i = 0; i < saveData.packaging.salesSlotBottles.Count && i < salesSlots.Length; i++)
+                {
+                    int bottleCount = saveData.packaging.salesSlotBottles[i];
+                    if (bottleCount > 0)
+                    {
+                        SpawnCrateInSalesSlot(i, bottleCount);
+                    }
+                }
+            }
+
+            UpdateProductionFullIcon();
+            UpdateSalesFullIcon();
+
+            Debug.Log($"[PackageManager] 📂 Loaded - Stack: {productionStack.Count}, Active: {(currentActiveCrate != null ? currentActiveCrate.landedMilkCount : 0)}/6");
         }
 
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();
+
+            // Capacity
             saveData.packaging.capacityLevel = capacityLevel;
+
+            // Production stack
+            saveData.packaging.productionStackBottles.Clear();
+            foreach (var crate in productionStack)
+            {
+                if (crate != null)
+                {
+                    saveData.packaging.productionStackBottles.Add(crate.landedMilkCount);
+                }
+            }
+
+            // Active crate
+            saveData.packaging.activeCrateBottles = (currentActiveCrate != null)
+                ? currentActiveCrate.landedMilkCount
+                : 0;
+
+            // ✅ Sales slots - LIST SIZE CHECK!
+            // Ensure list is big enough
+            while (saveData.packaging.salesSlotBottles.Count < salesSlotsContents.Length)
+            {
+                saveData.packaging.salesSlotBottles.Add(-1);
+            }
+
+            // Now safe to assign
+            for (int i = 0; i < salesSlotsContents.Length; i++)
+            {
+                if (salesSlotsContents[i] != null)
+                {
+                    saveData.packaging.salesSlotBottles[i] = salesSlotsContents[i].CurrentBottleCount;
+                }
+                else
+                {
+                    saveData.packaging.salesSlotBottles[i] = -1;
+                }
+            }
+
             saveManager.SaveGame(saveData);
+
+            Debug.Log($"[PackageManager] 💾 Saved - Stack: {saveData.packaging.productionStackBottles.Count}, Active: {saveData.packaging.activeCrateBottles}");
         }
 
+        private void SpawnCrateWithBottles(int bottleCount, bool isActiveCase)
+        {
+            if (bottleCount <= 0) return;
+
+            int spawnIndex = isActiveCase ? productionStack.Count : productionStack.Count;
+            Vector3 spawnPos = GetStackPosition(spawnIndex);
+
+            GameObject newCrateObj = Instantiate(cratePrefab, spawnPos, caseSpawnPoint.rotation);
+            MilkCrate crate = newCrateObj.GetComponent<MilkCrate>();
+
+            if (crate != null)
+            {
+                newCrateObj.transform.SetParent(caseSpawnPoint);
+                newCrateObj.transform.localScale = Vector3.one * 1.0f;
+
+                // ✅ Bottle'ları instant spawn (AddBottleInstant kullan)
+                for (int i = 0; i < bottleCount; i++)
+                {
+                    crate.AddBottleInstant(milkBottlePrefab);
+                }
+
+                if (isActiveCase)
+                {
+                    currentActiveCrate = crate;
+                    Debug.Log($"[PackageManager] 📂 Active crate loaded: {bottleCount}/6");
+                }
+                else
+                {
+                    productionStack.Add(crate);
+                    Debug.Log($"[PackageManager] 📂 Stack crate loaded: {bottleCount}/6");
+                }
+            }
+        }
+
+        private void SpawnCrateInSalesSlot(int slotIndex, int bottleCount)
+        {
+            if (slotIndex < 0 || slotIndex >= salesSlots.Length) return;
+            if (bottleCount <= 0) return;
+
+            Transform slot = salesSlots[slotIndex];
+
+            GameObject crateObj = Instantiate(cratePrefab, slot.position, slot.rotation);
+            MilkCrate crate = crateObj.GetComponent<MilkCrate>();
+
+            if (crate != null)
+            {
+                crateObj.transform.SetParent(slot);
+                crateObj.transform.localPosition = Vector3.zero;
+                crateObj.transform.localRotation = Quaternion.Euler(0f, -90f, 0f);
+                crateObj.transform.localScale = Vector3.one * 0.6f;
+
+                // ✅ Bottle'ları instant spawn (AddBottleInstant kullan)
+                for (int i = 0; i < bottleCount; i++)
+                {
+                    crate.AddBottleInstant(milkBottlePrefab);
+                }
+
+                salesSlotsContents[slotIndex] = crate;
+
+                Debug.Log($"[PackageManager] 📂 Sales slot {slotIndex} loaded: {bottleCount}/6");
+            }
+        }
         private void UpdateCapacity()
         {
             currentCapacity = config.packageStationCapacityBase + (capacityLevel - 1) * 4;

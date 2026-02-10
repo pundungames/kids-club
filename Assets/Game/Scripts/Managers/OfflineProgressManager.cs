@@ -121,21 +121,33 @@ namespace MilkFarm
                 if (effectiveTime <= 0) continue;
 
                 // Production
-                float productionTime = config.baseProductionTime;
+                // Production calculation
+                float productionTime = config.baseProductionTime; // 30s
+
+                // ✅ productionTimer = KALAN süre!
+                // Örnek: timer 10s kaldı (remaining)
+                // Offline: 600s geçti
+                // Total: 10s + 600s = 610s
+                // Cycles: 610 / 30 = 20.33 → 20 cycles
                 float totalTime = cowSaveData.productionTimer + effectiveTime;
                 int cycles = Mathf.FloorToInt(totalTime / productionTime);
                 float remainingTimer = totalTime % productionTime;
 
                 int currentMilk = cowSaveData.storedMilk;
-                int maxMilk = config.maxMilkStack;
+                int maxMilk = config.maxMilkStack; // 6
                 int milkProduced = Mathf.Min(cycles, maxMilk - currentMilk);
 
                 if (milkProduced > 0)
                 {
                     cowSaveData.storedMilk += milkProduced;
                     result.totalMilkProduced += milkProduced;
-                    Debug.Log($"[OfflineProgress] Cow {i}: +{milkProduced} milk");
+                    Debug.Log($"[OfflineProgress] Cow {i}: +{milkProduced} milk (cycles: {cycles}, capped by stack)");
                 }
+
+                // ✅ Yeni timer = kalan süre
+                cowSaveData.productionTimer = remainingTimer;
+
+                Debug.Log($"[OfflineProgress] Cow {i}: Timer {cowSaveData.productionTimer:F1}s → {remainingTimer:F1}s");
 
                 cowSaveData.productionTimer = remainingTimer;
 

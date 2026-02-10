@@ -1,18 +1,21 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using Zenject;
 
 namespace MilkFarm
 {
     /// <summary>
-    /// UI yöneticisi - Panelleri açar/kapatýr
+    /// UI yÃ¶neticisi - Panelleri aÃ§ar/kapatÄ±r
     /// </summary>
     public class UIManager : MonoBehaviour
     {
+        [Inject] private CowManager cowManager;
+        [Inject] private StableManager stableManager;
+
         [Header("Panels")]
         [SerializeField] internal PurchasePanelUI purchasePanel;
 
         [Header("ScriptableObject References")]
-        [SerializeField] private PurchaseItemData[] cowPurchaseData;     // Ýnek satýn alma verileri
+        [SerializeField] private PurchaseItemData[] cowPurchaseData;     // Ä°nek satÄ±n alma verileri
         [SerializeField] private PurchaseItemData[] areaPurchaseData;    // Area unlock verileri
         [SerializeField] private PurchaseItemData[] troughPurchaseData;  // Trough unlock verileri
         [SerializeField] private PurchaseItemData[] slotPurchaseData;    // Slot unlock verileri
@@ -27,43 +30,76 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// Ýnek satýn alma panelini aç
+        /// Ä°nek satÄ±n alma panelini aÃ§
         /// </summary>
         public void OpenCowPurchasePanel(int cowIndex)
         {
-            if (cowPurchaseData == null || cowIndex >= cowPurchaseData.Length)
+            if (purchasePanel == null)
             {
-                Debug.LogError($"[UIManager] Cow data yok! Index: {cowIndex}");
+                Debug.LogError("[UIManager] PurchasePanel null!");
                 return;
             }
 
-            PurchaseItemData data = cowPurchaseData[cowIndex];
-            if (data == null)
+            if (cowManager == null)
             {
-                Debug.LogError($"[UIManager] Cow data null! Index: {cowIndex}");
+                Debug.LogError("[UIManager] CowManager null!");
                 return;
             }
 
-            OpenPurchasePanel(data);
+            // Create dynamic data
+            PurchaseItemData data = ScriptableObject.CreateInstance<PurchaseItemData>();
+            data.titleText = "UNLOCK COW";
+            data.productName = $"Cow #{cowIndex + 1}";
+            data.benefitDescription = "Unlock this cow to produce milk!";
+
+            int gemCost = cowManager.GetCowPurchaseCost(cowIndex);
+            data.gemCost = gemCost;
+            data.priceText = $"{gemCost} ðŸ’Ž";
+            data.isRealMoney = false;
+
+            data.type = PurchaseType.UnlockCow;
+            data.targetIndex = cowIndex;
+
+            purchasePanel.OpenPanel(data);
         }
 
+
         /// <summary>
-        /// Area unlock panelini aç
+        /// Area unlock panelini aÃ§
         /// </summary>
         public void OpenAreaPurchasePanel(int areaIndex)
         {
-            if (areaPurchaseData == null || areaIndex >= areaPurchaseData.Length)
+            if (purchasePanel == null)
             {
-                Debug.LogError($"[UIManager] Area data yok! Index: {areaIndex}");
+                Debug.LogError("[UIManager] PurchasePanel null!");
                 return;
             }
 
-            PurchaseItemData data = areaPurchaseData[areaIndex];
-            OpenPurchasePanel(data);
+            if (stableManager == null)
+            {
+                Debug.LogError("[UIManager] StableManager null!");
+                return;
+            }
+
+            // Create dynamic data
+            PurchaseItemData data = ScriptableObject.CreateInstance<PurchaseItemData>();
+            data.titleText = "UNLOCK STABLE";
+            data.productName = $"Stable #{areaIndex + 1}";
+            data.benefitDescription = "Unlock this stable to house 3 more cows!";
+
+            int gemCost = stableManager.GetStableUnlockCost(areaIndex);
+            data.gemCost = gemCost;
+            data.priceText = $"{gemCost} ðŸ’Ž";
+            data.isRealMoney = false;
+
+            data.type = PurchaseType.UnlockArea;
+            data.targetIndex = areaIndex;
+
+            purchasePanel.OpenPanel(data);
         }
 
         /// <summary>
-        /// Trough unlock panelini aç
+        /// Trough unlock panelini aÃ§
         /// </summary>
         public void OpenTroughPurchasePanel(int troughIndex)
         {
@@ -78,7 +114,7 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// Slot unlock panelini aç
+        /// Slot unlock panelini aÃ§
         /// </summary>
         public void OpenSlotPurchasePanel(int slotIndex)
         {
@@ -93,7 +129,7 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// Genel purchase panel aç
+        /// Genel purchase panel aÃ§
         /// </summary>
         public void OpenPurchasePanel(PurchaseItemData data)
         {
@@ -107,7 +143,7 @@ namespace MilkFarm
         }
 
         /// <summary>
-        /// Tüm panelleri kapat
+        /// TÃ¼m panelleri kapat
         /// </summary>
         public void CloseAllPanels()
         {

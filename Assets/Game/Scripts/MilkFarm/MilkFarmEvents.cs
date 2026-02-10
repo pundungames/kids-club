@@ -136,5 +136,12 @@ namespace MilkFarm
             OnSaveRequested?.Invoke();
             Debug.Log("[MilkFarmEvents] 💾 SaveRequested!");
         }
+        public static event Action<int, int> OnCowUpgraded; // (globalIndex, newLevel)
+
+        public static void CowUpgraded(int globalIndex, int newLevel)
+        {
+            OnCowUpgraded?.Invoke(globalIndex, newLevel);
+            Debug.Log($"[MilkFarmEvents] 🐄 Cow {globalIndex} upgraded to Level {newLevel}");
+        }
     }
 }

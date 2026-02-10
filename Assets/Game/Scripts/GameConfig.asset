@@ -27,8 +27,8 @@ MonoBehaviour:
   customerMinRequest: 1
   customerMaxRequest: 4
   moneyPerMilk: 1
-  feedingInterval: 20
-  wateringInterval: 20
+  feedingInterval: 200
+  wateringInterval: 200
   feedingTapFill: 0.25
   wateringTapFill: 0.25
   baseCostCow: 50
@@ -43,3 +43,7 @@ MonoBehaviour:
   customerRichMultiplierPlus100: 2
   autoWorkerInterval: 1
   maxOfflineTime: 86400
+  cowSpritesPerLevel:
+  - {fileID: 21300000, guid: 7c227cf25c41c2a48830c054cb24592d, type: 3}
+  - {fileID: 21300000, guid: aca72a3ee7ab1554599d86dab9f8c568, type: 3}
+  - {fileID: 21300000, guid: cb94ff2d4a8c1b44f9da63ae2404dc3b, type: 3}

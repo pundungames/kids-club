@@ -45,7 +45,22 @@ namespace MilkFarm
             CalculateGridDirections();
             LoadMoney();
         }
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested;
+        }
 
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested;
+        }
+
+        // ✅ HandleSaveRequested metodu EKLE:
+
+        private void HandleSaveRequested()
+        {
+            SaveMoney();
+        }
         private void CalculateGridDirections()
         {
             if (coinSpawnPoint == null)
@@ -68,17 +83,40 @@ namespace MilkFarm
         private void LoadMoney()
         {
             var saveData = saveManager.GetCurrentSaveData();
+
             currentMoney = saveData.currentMoney;
+            pendingMoney = saveData.pendingMoney; // ✅ YENİ
+
+            // ✅ YENİ: Pending coin'leri spawn et
+            int coinCount = saveData.pendingCoins;
+            if (coinCount > 0)
+            {
+                Debug.Log($"[MoneyManager] 📂 Loading {coinCount} pending coins...");
+                StartCoroutine(SpawnPendingCoinsOnLoad(coinCount));
+            }
 
             if (currencyManager != null)
             {
                 currencyManager.UpdateCashUI(currentMoney);
             }
 
-            Debug.Log($"[MoneyManager] Para yüklendi: {currentMoney}");
+            Debug.Log($"[MoneyManager] 💵 Loaded - Money: {currentMoney}, Pending: {pendingMoney}, Coins: {coinCount}");
         }
 
-        // === EARN MONEY ===
+        // ✅ YENİ METOD: Load'dan sonra coin spawn
+
+        private IEnumerator SpawnPendingCoinsOnLoad(int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                SpawnSingleCoin(coinSpawnPoint != null ? coinSpawnPoint.position : transform.position);
+
+                // Instant görünmesi için frame delay (opsiyonel)
+                if (i % 9 == 0) yield return null;
+            }
+
+            Debug.Log($"[MoneyManager] ✅ {count} coin spawn edildi!");
+        }
 
         /// <summary>
         /// Para kazan - ÇOKLU COIN SPAWN
@@ -251,8 +289,14 @@ namespace MilkFarm
         private void SaveMoney()
         {
             var saveData = saveManager.GetCurrentSaveData();
+
             saveData.currentMoney = currentMoney;
+            saveData.pendingMoney = pendingMoney; // ✅ YENİ
+            saveData.pendingCoins = spawnedCoins.Count; // ✅ YENİ
+
             saveManager.SaveGame(saveData);
+
+            Debug.Log($"[MoneyManager] 💾 Saved - Money: {currentMoney}, Pending: {pendingMoney}, Coins: {spawnedCoins.Count}");
         }
 
         // === DEBUG ===

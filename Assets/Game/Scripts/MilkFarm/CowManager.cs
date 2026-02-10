@@ -174,7 +174,7 @@ namespace MilkFarm
         /// <summary>
         /// İnek spawn etme - CowController ile entegre
         /// </summary>
-        private void SpawnCow(int index)
+        public void SpawnCow(int index)
         {
             if (cowPrefab == null || cowSlots[index] == null) return;
 
@@ -416,6 +416,97 @@ namespace MilkFarm
             {
                 Debug.LogError($"[CowManager] Cow slot {index} bulunamadı!");
             }
+        }
+
+
+        /// <summary>
+        /// Upgrade cow level (with money)
+        /// </summary>
+        public bool UpgradeCow(int globalIndex, MoneyManager money)
+        {
+            if (globalIndex < 0 || globalIndex >= cows.Count) return false;
+
+            var cow = cows[globalIndex];
+            if (!cow.isUnlocked) return false;
+            if (cow.level >= 3) return false; // Max level
+
+            float cost = GetUpgradeCost(cow.level);
+            if (!money.CanAfford(cost)) return false;
+
+            money.SpendMoney(cost);
+            cow.level++;
+
+            // Update controller if spawned
+            if (cow.controller != null)
+            {
+                cow.controller.OnLevelChanged(cow.level);
+            }
+
+            MilkFarmEvents.CowUpgraded(globalIndex, cow.level);
+            Debug.Log($"[CowManager] Cow {globalIndex} upgraded to Level {cow.level}!");
+            return true;
+        }
+
+        /// <summary>
+        /// Get upgrade cost for current level
+        /// </summary>
+        public float GetUpgradeCost(int currentLevel)
+        {
+            if (currentLevel >= 3) return 0f;
+            return currentLevel == 1 ? 500f : 1000f; // Lv1→2: $500, Lv2→3: $1000
+        }
+
+        /// <summary>
+        /// Get production time based on level
+        /// </summary>
+        public float GetProductionTime(int level)
+        {
+            float[] times = { 30f, 25f, 20f }; // Level 1, 2, 3
+            int index = Mathf.Clamp(level - 1, 0, 2);
+            return times[index];
+        }
+
+        /// <summary>
+        /// Get cow sprite based on level
+        /// </summary>
+        public Sprite GetCowSprite(int level)
+        {
+            if (config == null || config.cowSpritesPerLevel == null) return null;
+            int index = Mathf.Clamp(level - 1, 0, config.cowSpritesPerLevel.Length - 1);
+            return config.cowSpritesPerLevel[index];
+        }
+
+        /// <summary>
+        /// Purchase cow with gems
+        /// </summary>
+        public bool PurchaseCow(int globalIndex, IAPManager iap)
+        {
+            if (globalIndex < 0 || globalIndex >= cows.Count) return false;
+
+            var cow = cows[globalIndex];
+            if (cow.isUnlocked) return false;
+
+            int gemCost = GetCowPurchaseCost(globalIndex);
+            if (!iap.SpendGems(gemCost)) return false;
+
+            cow.isUnlocked = true;
+            iap.UnlockCow(globalIndex);
+            SpawnCow(globalIndex);
+
+            MilkFarmEvents.CowUnlocked(globalIndex);
+            Debug.Log($"[CowManager] Cow {globalIndex} purchased!");
+            return true;
+        }
+
+        /// <summary>
+        /// Get cow purchase cost (gems)
+        /// </summary>
+        public int GetCowPurchaseCost(int globalIndex)
+        {
+            if (globalIndex < 3) return 0;    // Cow 0-2: FREE
+            if (globalIndex < 6) return 100;  // Cow 3-5: 100 gems
+            if (globalIndex < 9) return 200;  // Cow 6-8: 200 gems
+            return 300;                       // Cow 9-11: 300 gems
         }
     }
 }

@@ -8,6 +8,7 @@ public class MilkCrate : MonoBehaviour
     public Transform[] milkSlots; // 6 slot
 
     private List<GameObject> spawnedBottles = new List<GameObject>();
+
     public int landedMilkCount { get; private set; } = 0; // Public getter
     public int targetMilkCount { get; private set; } = 0;  // Public getter
 
@@ -22,6 +23,9 @@ public class MilkCrate : MonoBehaviour
         if (landedMilkCount == 0) ToggleVisuals(false);
     }
 
+    /// <summary>
+    /// Runtime'da şişe ekle (flying animation ile)
+    /// </summary>
     public void AddMilkToCrate(GameObject milkPrefab, Vector3 startPos, Action onFull)
     {
         if (!HasSpace) return;
@@ -47,7 +51,6 @@ public class MilkCrate : MonoBehaviour
                     newMilk.transform.localRotation = Quaternion.identity;
                     newMilk.transform.localScale = Vector3.one * bottleScale;
 
-                    // Listeye ekle
                     spawnedBottles.Add(newMilk);
                 }
 
@@ -59,6 +62,36 @@ public class MilkCrate : MonoBehaviour
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Load için instant şişe ekle (animation YOK)
+    /// </summary>
+    public void AddBottleInstant(GameObject milkPrefab)
+    {
+        if (landedMilkCount >= milkSlots.Length)
+        {
+            Debug.LogWarning("[MilkCrate] Kasa FULL!");
+            return;
+        }
+
+        if (landedMilkCount == 0) ToggleVisuals(true);
+
+        Transform targetSlot = milkSlots[landedMilkCount];
+
+        if (milkPrefab != null)
+        {
+            GameObject bottle = Instantiate(milkPrefab, targetSlot.position, Quaternion.identity);
+            bottle.transform.SetParent(targetSlot);
+            bottle.transform.localPosition = Vector3.zero;
+            bottle.transform.localRotation = Quaternion.identity;
+            bottle.transform.localScale = Vector3.one * bottleScale;
+
+            spawnedBottles.Add(bottle);
+        }
+
+        landedMilkCount++;
+        targetMilkCount++;
     }
 
     /// <summary>
@@ -118,6 +151,9 @@ public class MilkCrate : MonoBehaviour
     public void ToggleVisuals(bool isActive)
     {
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
-        foreach (Renderer r in renderers) r.enabled = isActive;
+        foreach (Renderer r in renderers)
+        {
+            r.enabled = isActive;
+        }
     }
 }

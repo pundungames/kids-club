@@ -72,15 +72,27 @@ namespace MilkFarm
     [Serializable]
     public class PackageSaveData
     {
-        public int milkPool;
-        public int packageCount;
+        public int milkPool; // KULLANILMIYOR (deprecated)
+        public int packageCount; // KULLANILMIYOR (deprecated)
         public int capacityLevel;
+
+        // ✅ YENİ: Production stack
+        public List<int> productionStackBottles; // Her case'in bottle count'u
+
+        // ✅ YENİ: Sales slots
+        public List<int> salesSlotBottles; // Her slot'un bottle count'u (null = -1)
+
+        // ✅ YENİ: Active crate
+        public int activeCrateBottles; // Aktif case'in bottle count'u
 
         public PackageSaveData()
         {
             milkPool = 0;
             packageCount = 0;
             capacityLevel = 1;
+            productionStackBottles = new List<int>();
+            salesSlotBottles = new List<int> { -1, -1, -1, -1 }; // 4 slot (2x2 grid)
+            activeCrateBottles = 0;
         }
     }
 
@@ -119,6 +131,8 @@ namespace MilkFarm
         // Money
         public float currentMoney;
 
+        public float pendingMoney; // ✅ YENİ: Stackde bekleyen
+        public int pendingCoins;   // ✅ YENİ: Stack'teki coin sayısı
         // Cows
         public List<CowSaveData> cows = new List<CowSaveData>();
 
@@ -135,12 +149,17 @@ namespace MilkFarm
         public long lastSaveTimestamp;
         public long lastPlayTime;
 
+        [Header("Unlock Lists")]
+        public List<int> unlockedCows = new List<int>();
+        public List<int> unlockedAreas = new List<int>();
         /// <summary>
         /// Constructor - Yeni save için initialization
         /// </summary>
         public MilkFarmSaveData()
         {
             currentMoney = 0f;
+            pendingMoney = 0f;
+            pendingCoins = 0;
             packaging = new PackageSaveData();
             iap = new IAPSaveData();
             lastSaveTimestamp = 0;
@@ -151,6 +170,9 @@ namespace MilkFarm
 
             // ✅ 4 istasyon initialize et
             InitializeStations(4);
+
+            unlockedCows = new List<int> { 0, 1, 2 }; // First 3 free
+            unlockedAreas = new List<int> { 0 };      // First stable free
 
             Debug.Log("[MilkFarmSaveData] Yeni save oluşturuldu: 12 inek, 4 istasyon (İlk inek unlocked)");
         }

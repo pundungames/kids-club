@@ -33,7 +33,6 @@ namespace MilkFarm
         [Header("Store Bilgileri")]
         public string productId;          // "com.milkfarm.cow_slot_1" veya IAP ID
         public PurchaseType type;         // UnlockCow, SpeedBoost50, vb.
-
         [Header("Unlock Bilgileri (Area/Slot/Cow için)")]
         public int targetIndex;           // Hangi area/slot/cow (0, 1, 2, 3...)
         public int gemCost;               // Gem maliyeti

@@ -15,6 +15,7 @@ namespace MilkFarm
         private PackageManager packageManager;
         private TroughController feedTrough;
         private TroughController waterTrough;
+        [Inject] private CowManager cowManager;
 
         [Header("Görsel Ayarlar")]
         [SerializeField] private Image progressBar;
@@ -45,13 +46,49 @@ namespace MilkFarm
         private void OnEnable()
         {
             MilkFarmEvents.OnTroughRefilled += HandleTroughRefilled;
-            MilkFarmEvents.OnSaveRequested += HandleSaveRequested; // ✅ YENİ
         }
 
         private void OnDisable()
         {
             MilkFarmEvents.OnTroughRefilled -= HandleTroughRefilled;
-            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested; // ✅ YENİ
+        }
+        private void Update()
+        {
+            SyncCowData();
+        }
+        private void SyncCowData()
+        {
+            if (cowData == null)
+            {
+                Debug.LogWarning($"[CowController {cowIndex}] ⚠️ cowData NULL!");
+                return;
+            }
+
+            if (cowData.index != cowIndex)
+            {
+                Debug.LogError($"[CowController {cowIndex}] ❌ YANLIŞ COW!");
+                return;
+            }
+
+            // Stack sync
+            cowData.currentMilk = milkStack;
+
+            // Timer sync
+            if (isPaused)
+            {
+                cowData.productionTimer = savedTimer;
+            }
+            else if (isProducing && progressBar != null)
+            {
+                float productionTime = CalculateProductionTime();
+                float elapsed = progressBar.fillAmount * productionTime;
+                float remaining = productionTime - elapsed;
+                cowData.productionTimer = remaining;
+            }
+            else
+            {
+                cowData.productionTimer = 0f;
+            }
         }
 
 
@@ -234,9 +271,6 @@ namespace MilkFarm
             // Coroutine restart (kalan timer ile)
             productionCoroutine = StartCoroutine(ProductionRoutine());
         }
-
-        // ✅ CowController.cs - ProductionRoutine'i DEĞİŞTİR:
-
         IEnumerator ProductionRoutine()
         {
             isProducing = true;
@@ -264,18 +298,35 @@ namespace MilkFarm
 
                 float productionTime = CalculateProductionTime();
 
-                // ✅ Saved timer varsa ondan başla, yoksa sıfırdan
-                float timer = savedTimer > 0 ? savedTimer : 0f;
-                savedTimer = 0f; // Reset
+                // ✅ DÜZELTME: savedTimer = KALAN süre, timer = GEÇEN süre
+                float timer;
 
-                // ✅ YENİ: ProgressBar'ı başlangıç değerine set et
-                if (progressBar != null && timer > 0f)
+                if (savedTimer > 0f)
                 {
-                    progressBar.fillAmount = timer / productionTime;
-                    Debug.Log($"[CowController {cowIndex}] ProgressBar restored: {progressBar.fillAmount * 100:F0}%");
+                    // savedTimer KALAN süre (örn: 4.1s)
+                    // timer'ı GEÇEN süreye çevir (örn: 30 - 4.1 = 25.9s)
+                    timer = productionTime - savedTimer;
+                    savedTimer = 0f; // Reset
+
+                    Debug.Log($"[CowController {cowIndex}] Resumed - Elapsed: {timer:F1}s / {productionTime:F1}s");
+                }
+                else
+                {
+                    // Yeni başlangıç
+                    timer = 0f;
+                    Debug.Log($"[CowController {cowIndex}] Started fresh - 0s / {productionTime:F1}s");
                 }
 
-                Debug.Log($"[CowController {cowIndex}] Timer başlatıldı: {timer:F1}s / {productionTime:F1}s");
+                // ✅ ProgressBar başlangıç değeri
+                if (progressBar != null)
+                {
+                    progressBar.fillAmount = timer / productionTime;
+
+                    if (timer > 0f)
+                    {
+                        Debug.Log($"[CowController {cowIndex}] ProgressBar restored: {progressBar.fillAmount * 100:F0}%");
+                    }
+                }
 
                 while (timer < productionTime)
                 {
@@ -284,8 +335,9 @@ namespace MilkFarm
                     {
                         if (!feedTrough.HasResource || !waterTrough.HasResource)
                         {
-                            // ✅ PAUSE: Timer'ı kaydet
-                            savedTimer = timer;
+                            // ✅ PAUSE: KALAN süreyi kaydet
+                            float remaining = productionTime - timer;
+                            savedTimer = remaining;
                             isPaused = true;
 
                             ShowNeedsIndicator(true);
@@ -296,7 +348,7 @@ namespace MilkFarm
                             isProducing = false;
                             if (timerCanvas != null) timerCanvas.SetActive(false);
 
-                            Debug.Log($"[CowController {cowIndex}] ⚠️ PAUSE! Timer: {savedTimer:F1}s / {productionTime:F1}s");
+                            Debug.Log($"[CowController {cowIndex}] ⚠️ PAUSE! Elapsed: {timer:F1}s, Remaining: {remaining:F1}s");
                             yield break;
                         }
                     }
@@ -310,9 +362,10 @@ namespace MilkFarm
                         ? config.tapHoldSpeedMultiplier
                         : (isHolding ? 0.75f : 1.0f);
 
+                    // ✅ timer artıyor (GEÇEN süre: 0 → 30)
                     timer += Time.deltaTime * speedMultiplier;
 
-                    // ✅ ProgressBar güncelle
+                    // ✅ ProgressBar güncelle (GEÇEN süreye göre)
                     if (progressBar != null)
                         progressBar.fillAmount = timer / productionTime;
 
@@ -338,23 +391,29 @@ namespace MilkFarm
         }
         private float CalculateProductionTime()
         {
-            if (config == null || cowData == null)
-                return baseTimePerMilk;
+            if (config == null) return 30f;
 
-            float baseTime = config.baseProductionTime;
-            float levelMultiplier = Mathf.Pow(0.9f, cowData.level - 1);
-            float leveledTime = baseTime * levelMultiplier;
+            // ✅ Level-based production time
+            float baseTime = 30f; // Default
 
-            leveledTime = Mathf.Max(config.minProductionTime, leveledTime);
-
-            if (iapManager != null)
+            if (cowManager != null && cowData != null)
             {
-                leveledTime *= iapManager.GetGlobalSpeedMultiplier();
+                baseTime = cowManager.GetProductionTime(cowData.level);
+            }
+            else if (config != null)
+            {
+                baseTime = config.baseProductionTime;
             }
 
-            return leveledTime;
-        }
+            // IAP speed boost
+            if (iapManager != null)
+            {
+                float multiplier = iapManager.GetSpeedMultiplier();
+                baseTime /= multiplier;
+            }
 
+            return baseTime;
+        }
         private void ProduceMilk()
         {
             milkStack++;
@@ -436,44 +495,47 @@ namespace MilkFarm
                 return progressBar.fillAmount;
             return 0f;
         }
-
-        // === DEBUG ===
-
-        [ContextMenu("Debug: Print Status")]
-        private void DebugPrintStatus()
+        private void OnApplicationQuit()
         {
-            Debug.Log($"[Cow {cowIndex}] Producing: {isProducing}, Paused: {isPaused}, Timer: {savedTimer:F1}s, Stack: {milkStack}");
+            // Quit öncesi son bir kez sync
+            SyncCowData();
+
+            Debug.Log($"[CowController {cowIndex}] 💾 Quit sync - Timer: {cowData?.productionTimer:F1}s, Stack: {milkStack}");
+        }
+
+        private void OnApplicationPause(bool pause)
+        {
+            if (pause)
+            {
+                // Pause öncesi son bir kez sync
+                SyncCowData();
+
+                Debug.Log($"[CowController {cowIndex}] 💾 Pause sync - Timer: {cowData?.productionTimer:F1}s, Stack: {milkStack}");
+            }
         }
         /// <summary>
-        /// Save event handler - Timer ve stack'i cowData'ya kaydet
+        /// Called when cow level changes (upgrade)
         /// </summary>
-        private void HandleSaveRequested()
+        public void OnLevelChanged(int newLevel)
         {
             if (cowData == null) return;
+            cowData.level = newLevel;
 
-            // Timer save (pause durumundaysa savedTimer, değilse hesapla)
-            if (isPaused)
+            // Update sprite
+            if (cowManager != null)
             {
-                cowData.productionTimer = savedTimer;
-            }
-            else if (isProducing && progressBar != null)
-            {
-                // Şu anki timer'ı hesapla (progress'ten)
-                float productionTime = CalculateProductionTime();
-                float currentProgress = progressBar.fillAmount; // 0-1
-                float elapsed = currentProgress * productionTime;
-                float remaining = productionTime - elapsed;
-                cowData.productionTimer = remaining;
-            }
-            else
-            {
-                cowData.productionTimer = 0f;
+                Sprite newSprite = cowManager.GetCowSprite(newLevel);
+                if (newSprite != null)
+                {
+                    var renderer = GetComponentInChildren<SpriteRenderer>();
+                    if (renderer != null)
+                    {
+                        renderer.sprite = newSprite;
+                    }
+                }
             }
 
-            // Stack save
-            cowData.currentMilk = milkStack;
-
-            Debug.Log($"[CowController {cowIndex}] 💾 Saved - Timer: {cowData.productionTimer:F1}s, Stack: {milkStack}");
+            Debug.Log($"[CowController {cowIndex}] Level changed to {newLevel}");
         }
 
     }

@@ -4,6 +4,7 @@ using System.Collections;
 using MilkFarm;
 using Zenject;
 using TMPro;
+using DG.Tweening;
 
 [RequireComponent(typeof(NavMeshAgent))]
 public class CustomerController : MonoBehaviour
@@ -191,7 +192,7 @@ public class CustomerController : MonoBehaviour
         {
             if (customerManager != null && customerManager.queueStartPoint != null)
             {
-                RotateTowards(customerManager.queueStartPoint.position);
+                RotateTowards(Vector3.forward);
             }
 
             if (GetFlatDistance(transform.position, currentTargetPos) > 0.5f)
@@ -232,7 +233,7 @@ public class CustomerController : MonoBehaviour
             packageTextParent.SetActive(false);
         }
 
-        yield return new WaitForSeconds(0.8f);
+        yield return new WaitForSeconds(.8f);
 
         if (customerManager != null) customerManager.LeaveQueue(this);
         currentState = State.WalkingToExit;

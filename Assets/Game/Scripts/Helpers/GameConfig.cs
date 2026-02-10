@@ -120,5 +120,8 @@ namespace MilkFarm
         [Header("=== OFFLINE LIMIT ===")]
         [Tooltip("Offline'da en fazla hesaplanacak süre (saniye)")]
         public float maxOfflineTime = 86400f; // 24 saat
+
+        [Header("Cow Level System")]
+        public Sprite[] cowSpritesPerLevel;
     }
 }

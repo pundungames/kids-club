@@ -11,6 +11,8 @@ namespace MilkFarm
     public class IAPManager : MonoBehaviour
     {
         [Inject] private SaveManager saveManager;
+        [Inject] private CowManager cowManager;
+        [Inject] private StableManager stableManager;
 
         // === GEM SYSTEM ===
         private void Start()
@@ -117,48 +119,117 @@ namespace MilkFarm
             return saveData?.iap?.milkStorageBoostLevel ?? 0;
         }
 
-        // === PURCHASE ===
-
         public void ProcessPurchase(PurchaseItemData data)
         {
-            if (saveManager == null)
-            {
-                Debug.LogError("[IAPManager] ❌ SaveManager NULL - Purchase iptal!");
-                return;
-            }
-
             if (data == null)
             {
-                Debug.LogError("[IAPManager] ❌ Purchase data NULL!");
+                Debug.LogError("[IAPManager] Purchase data null!");
                 return;
             }
 
-            Debug.Log($"[IAPManager] 🛒 Purchase: {data.productName}");
+            Debug.Log($"[IAPManager] 🛒 Processing: {data.productName}");
 
-            if (data.isRealMoney) return;
-
-            if (data.gemCost > 0 && !SpendGems(data.gemCost))
+            // Gem purchase (stable system)
+            if (!data.isRealMoney && data.gemCost > 0)
             {
-                return;
+                if (!CanAffordGems(data.gemCost))
+                {
+                    Debug.LogWarning("[IAPManager] ❌ Not enough gems!");
+                    // TODO: Show "not enough gems" popup
+                    return;
+                }
+
+                SpendGems(data.gemCost);
+
+                // Handle unlock based on type
+                switch (data.type)
+                {
+                    case PurchaseType.UnlockCow:
+                        HandleCowUnlock(data.targetIndex);
+                        break;
+
+                    case PurchaseType.UnlockArea:
+                        HandleAreaUnlock(data.targetIndex);
+                        break;
+
+                    case PurchaseType.UnlockTrough:
+                        // Keep existing trough unlock logic
+                        Debug.Log($"[IAPManager] Trough unlock - use existing system");
+                        break;
+
+                    default:
+                        Debug.LogWarning($"[IAPManager] Unknown unlock type: {data.type}");
+                        break;
+                }
+
+                Debug.Log($"[IAPManager] ✅ Purchase complete!");
             }
-
-            switch (data.type)
+            // Real money IAP
+            else if (data.isRealMoney)
             {
-                case PurchaseType.SpeedBoost50: SetSpeedTier(1); break;
-                case PurchaseType.SpeedBoost100: SetSpeedTier(2); break;
-                case PurchaseType.RichCustomer50: SetRichTier(1); break;
-                case PurchaseType.RichCustomer100: SetRichTier(2); break;
-                case PurchaseType.MilkStorage: IncrementStorageBoost(); break;
-                case PurchaseType.AutoFeeder: SetAutoFeeder(true); break;
-                case PurchaseType.AutoWorker: SetAutoWorker(true); break;
-                case PurchaseType.UnlockArea: UnlockArea(data.targetIndex); break;
-                case PurchaseType.UnlockTrough: UnlockTrough(data.targetIndex); break;
-                case PurchaseType.UnlockCow: UnlockCow(data.targetIndex); break;
+                // Existing real money IAP logic
+                Debug.Log("[IAPManager] Real money purchase");
             }
         }
+        private void HandleCowUnlock(int cowIndex)
+        {
+            if (cowManager == null)
+            {
+                Debug.LogError("[IAPManager] CowManager null!");
+                return;
+            }
 
-        // === IAP BOOST METHODS ===
+            // ✅ EASIEST: Direct unlock in save data
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData == null) return;
 
+            if (cowIndex < 0 || cowIndex >= saveData.cows.Count) return;
+
+            var cowData = saveData.cows[cowIndex];
+            if (cowData.isUnlocked)
+            {
+                Debug.LogWarning($"[IAPManager] Cow {cowIndex} already unlocked!");
+                return;
+            }
+
+            // Unlock in save data
+            cowData.isUnlocked = true;
+            UnlockCow(cowIndex);
+
+            // Update runtime cow list
+            var allCows = cowManager.GetAllCows();
+            if (cowIndex < allCows.Count)
+            {
+                allCows[cowIndex].isUnlocked = true;
+            }
+
+            // Trigger cow manager to spawn
+            cowManager.LoadFromSaveData(); // This will spawn unlocked cows
+
+            MilkFarmEvents.CowUnlocked(cowIndex);
+
+            Debug.Log($"[IAPManager] ✅ Cow {cowIndex} unlocked!");
+        }
+
+        private void HandleAreaUnlock(int areaIndex)
+        {
+            if (stableManager == null)
+            {
+                Debug.LogError("[IAPManager] StableManager null!");
+                return;
+            }
+
+            if (stableManager.IsStableUnlocked(areaIndex))
+            {
+                Debug.LogWarning($"[IAPManager] Stable {areaIndex} already unlocked!");
+                return;
+            }
+
+            // Unlock stable (free=true because gems already spent)
+            stableManager.UnlockStable(areaIndex, free: true);
+
+            Debug.Log($"[IAPManager] ✅ Stable {areaIndex} unlocked!");
+        }
         private void SetSpeedTier(int tier)
         {
             if (saveManager == null) return;
@@ -215,41 +286,51 @@ namespace MilkFarm
         }
 
         // === UNLOCK METHODS ===
-
-        private void UnlockCow(int globalIndex)
+        public bool IsAreaUnlocked(int areaIndex)
         {
-            if (saveManager == null) return;
-
-            Debug.Log($"[IAPManager] 🐄 UnlockCow: {globalIndex}");
-
             var saveData = saveManager.GetCurrentSaveData();
-            if (saveData.iap == null) saveData.iap = new IAPSaveData();
-
-            if (!saveData.iap.unlockedCows.Contains(globalIndex))
-            {
-                saveData.iap.unlockedCows.Add(globalIndex);
-                saveManager.SaveGame(saveData);
-            }
-
-            MilkFarmEvents.CowUnlocked(globalIndex);
+            if (saveData == null) return false;
+            return saveData.unlockedAreas.Contains(areaIndex);
         }
-
-        private void UnlockArea(int areaIndex)
+        public void UnlockCow(int cowIndex)
         {
-            if (saveManager == null) return;
-
-            Debug.Log($"[IAPManager] 🏗️ UnlockArea: {areaIndex}");
-
             var saveData = saveManager.GetCurrentSaveData();
-            if (saveData.iap == null) saveData.iap = new IAPSaveData();
+            if (saveData == null) return;
 
-            if (!saveData.iap.unlockedAreas.Contains(areaIndex))
+            if (!saveData.unlockedCows.Contains(cowIndex))
             {
-                saveData.iap.unlockedAreas.Add(areaIndex);
+                saveData.unlockedCows.Add(cowIndex);
                 saveManager.SaveGame(saveData);
+                Debug.Log($"[IAPManager] ✅ Cow {cowIndex} unlocked!");
             }
+        }
+        /// <summary>
+        /// Get speed multiplier from IAP tier
+        /// </summary>
+        public float GetSpeedMultiplier()
+        {
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData == null || saveData.iap == null) return 1f;
 
-            MilkFarmEvents.AreaUnlocked(areaIndex);
+            // speedTier: 0 = normal (1x), 1 = +50% (1.5x), 2 = +100% (2x)
+            switch (saveData.iap.speedTier)
+            {
+                case 1: return 1.5f;
+                case 2: return 2f;
+                default: return 1f;
+            }
+        }
+        public void UnlockArea(int areaIndex)
+        {
+            var saveData = saveManager.GetCurrentSaveData();
+            if (saveData == null) return;
+
+            if (!saveData.unlockedAreas.Contains(areaIndex))
+            {
+                saveData.unlockedAreas.Add(areaIndex);
+                saveManager.SaveGame(saveData);
+                Debug.Log($"[IAPManager] ✅ Area {areaIndex} unlocked!");
+            }
         }
 
         private void UnlockTrough(int areaIndex)

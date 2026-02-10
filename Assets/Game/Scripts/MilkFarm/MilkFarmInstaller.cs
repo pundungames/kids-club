@@ -30,6 +30,7 @@ namespace MilkFarm
             Container.Bind<CustomerManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             //Container.Bind<OfflineProgressManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<AutoWorkerManager>().FromComponentInHierarchy().AsSingle().NonLazy();
+            Container.Bind<StableManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             //Container.Bind<UpgradeManager>().FromComponentInHierarchy().AsSingle().NonLazy();
 
             Debug.Log("[MilkFarmInstaller] Tüm bağımlılıklar başarıyla inject edildi!");

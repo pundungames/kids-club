@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -132,9 +133,9 @@ namespace MilkFarm
                 customer.requestedBottles,       // Şişe sayısı = Coin sayısı
                 salePosition                     // Spawn pozisyonu
             );
-
             MilkFarmEvents.CustomerServed(customer.totalPayment);
 
+          
             Debug.Log($"[CustomerManager] ✅ Müşteri #{customer.id} tamamlandı! " +
                       $"Ödeme: {customer.totalPayment}, Şişe: {customer.requestedBottles} coin");
 
@@ -144,9 +145,14 @@ namespace MilkFarm
             }
 
             customerQueue.Remove(customer);
-            UpdateQueuePositions();
+            StartCoroutine(CustomerPurchased(customer));
         }
+        IEnumerator CustomerPurchased(Customer customer)
+        {
+            yield return new WaitForSeconds(1f);
+            UpdateQueuePositions();
 
+        }
         private void UpdateQueuePositions()
         {
             for (int i = 0; i < customerQueue.Count; i++)
