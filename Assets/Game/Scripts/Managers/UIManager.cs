@@ -84,12 +84,12 @@ namespace MilkFarm
             // Create dynamic data
             PurchaseItemData data = ScriptableObject.CreateInstance<PurchaseItemData>();
             data.titleText = "UNLOCK STABLE";
-            data.productName = $"Stable #{areaIndex + 1}";
+            data.productName = $"Stable {areaIndex + 1}";
             data.benefitDescription = "Unlock this stable to house 3 more cows!";
 
             int gemCost = stableManager.GetStableUnlockCost(areaIndex);
             data.gemCost = gemCost;
-            data.priceText = $"{gemCost} 💎";
+            data.priceText = $"{gemCost}";
             data.isRealMoney = false;
 
             data.type = PurchaseType.UnlockArea;

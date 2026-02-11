@@ -1587,10 +1587,7 @@ MonoBehaviour:
   upgradeButton: {fileID: 5686828716256486169}
   upgradeCostText: {fileID: 837630354353883335}
   maxText: {fileID: 3646210624765017776}
-  openedObjects:
-  - {fileID: 7377073348204078584}
-  - {fileID: 5522317978524022350}
-  - {fileID: 1841355045292856782}
+  plusButton: {fileID: 3994171604519283187}
 --- !u!1 &9080671150020484134
 GameObject:
   m_ObjectHideFlags: 0

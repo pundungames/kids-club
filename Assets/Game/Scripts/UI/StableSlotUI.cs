@@ -4,19 +4,23 @@ using TMPro;
 
 namespace MilkFarm
 {
+    /// <summary>
+    /// StableSlotUI - + button opens PurchasePanel
+    /// </summary>
     public class StableSlotUI : MonoBehaviour
     {
         [Header("UI References")]
-        [SerializeField] private Button slotButton;
-        [SerializeField] private Image stableImage; // Single sprite (doesn't change)
+        [SerializeField] private Button slotButton; // Unlocked slot click → StableInfoPanel
+        [SerializeField] private Image stableImage;
         [SerializeField] private GameObject lockIcon;
         [SerializeField] private TextMeshProUGUI capacityText; // "3/3"
-        [SerializeField] private TextMeshProUGUI unlockCostText; // "💎 500"
+        [SerializeField] private Button plusButton; // + button (locked slot)
 
         private int stableIndex;
         private StableManager stableManager;
 
         public System.Action<int> onSlotClicked;
+        public System.Action<int> onPurchaseClicked; // New: purchase callback
 
         public void Setup(int index, StableManager manager)
         {
@@ -25,6 +29,10 @@ namespace MilkFarm
 
             if (slotButton != null)
                 slotButton.onClick.AddListener(() => onSlotClicked?.Invoke(stableIndex));
+
+            // ✅ + button for purchase
+            if (plusButton != null)
+                plusButton.onClick.AddListener(() => onPurchaseClicked?.Invoke(stableIndex));
 
             Refresh();
         }
@@ -37,6 +45,10 @@ namespace MilkFarm
             if (lockIcon != null)
                 lockIcon.SetActive(!isUnlocked);
 
+            // + button (show only if locked)
+            if (plusButton != null)
+                plusButton.gameObject.SetActive(!isUnlocked);
+
             if (isUnlocked)
             {
                 // Show capacity
@@ -47,22 +59,12 @@ namespace MilkFarm
                     capacityText.gameObject.SetActive(true);
                     capacityText.text = $"{current}/{max}";
                 }
-
-                if (unlockCostText != null)
-                    unlockCostText.transform.parent.gameObject.SetActive(false);
             }
             else
             {
-                // Show unlock cost
+                // Hide capacity
                 if (capacityText != null)
                     capacityText.gameObject.SetActive(false);
-
-                if (unlockCostText != null)
-                {
-                    unlockCostText.transform.parent.gameObject.SetActive(true);
-                    int cost = stableManager.GetStableUnlockCost(stableIndex);
-                    unlockCostText.text = $"💎 {cost}";
-                }
             }
         }
     }

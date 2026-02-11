@@ -1573,7 +1573,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   totalStables: 4
   cowsPerStable: 3
-  stableUnlockCosts: 00000000f4010000e8030000d0070000
+  stableUnlockCosts: 000000000a000000140000001e000000
 --- !u!1001 &545222931
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
@@ -7,14 +7,14 @@ using Zenject;
 namespace MilkFarm
 {
     /// <summary>
-    /// Stable Info Panel - LockButton sistemi i�in
-    /// Cow rows always visible, purchase via scene LockButton
+    /// Stable Info Panel - Handles cow + button clicks
     /// </summary>
     public class StableInfoPanel : MonoBehaviour
     {
         [Inject] private StableManager stableManager;
         [Inject] private CowManager cowManager;
         [Inject] private MoneyManager moneyManager;
+        [Inject] private UIManager uiManager;
 
         [Header("UI References")]
         [SerializeField] private GameObject panel;
@@ -68,13 +68,23 @@ namespace MilkFarm
             // Get cows in this stable
             var cows = stableManager.GetCowsInStable(currentStableIndex);
 
-            // Spawn rows (simplified Setup - no IAPManager)
+            // Spawn rows
             foreach (var cow in cows)
             {
                 CowRowUI row = Instantiate(cowRowPrefab, cowListContent);
                 row.Setup(cow, cowManager, moneyManager);
                 row.onCowChanged += RefreshCowList;
+                row.onPurchaseClicked += OnCowPurchaseButtonClicked; // ✅ New
                 cowRows.Add(row);
+            }
+        }
+
+        // ✅ + button clicked → Open purchase panel
+        private void OnCowPurchaseButtonClicked(int cowIndex)
+        {
+            if (uiManager != null)
+            {
+                uiManager.OpenCowPurchasePanel(cowIndex);
             }
         }
     }

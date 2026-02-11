@@ -5,24 +5,25 @@ using TMPro;
 namespace MilkFarm
 {
     /// <summary>
-    /// CowRowUI - LockButton sistemi için
-    /// Purchase button YOK, sadece info + upgrade
+    /// CowRowUI - + button opens PurchasePanel
     /// </summary>
     public class CowRowUI : MonoBehaviour
     {
         [Header("UI References")]
         [SerializeField] private Image cowIcon;
         [SerializeField] private TextMeshProUGUI levelText; // "Lv 1", "Lv 2", "Lv 3"
-        [SerializeField] private GameObject lockIcon; // 🔒 icon (not owned)
-        [SerializeField] private Button upgradeButton;
-        [SerializeField] private TextMeshProUGUI upgradeCostText;
-        [SerializeField] private TextMeshProUGUI maxText;
-        [SerializeField] GameObject[] openedObjects;
+        [SerializeField] private GameObject lockIcon; // 🔒 (not owned)
+        [SerializeField] private Button upgradeButton; // Upgrade (owned)
+        [SerializeField] private TextMeshProUGUI upgradeCostText; // "$500"
+        [SerializeField] private TextMeshProUGUI maxText; // "MAX"
+        [SerializeField] private Button plusButton; // + button (not owned)
+
         private Cow cow;
         private CowManager cowManager;
         private MoneyManager moneyManager;
 
         public System.Action onCowChanged;
+        public System.Action<int> onPurchaseClicked; // New: purchase callback
 
         public void Setup(Cow cowData, CowManager manager, MoneyManager money)
         {
@@ -32,6 +33,10 @@ namespace MilkFarm
 
             if (upgradeButton != null)
                 upgradeButton.onClick.AddListener(OnUpgradeClicked);
+
+            // ✅ + button for purchase
+            if (plusButton != null)
+                plusButton.onClick.AddListener(() => onPurchaseClicked?.Invoke(cow.index));
 
             Refresh();
         }
@@ -48,9 +53,13 @@ namespace MilkFarm
                 cowIcon.color = cow.isUnlocked ? Color.white : Color.gray;
             }
 
-            // Lock icon (show if not owned)
+            // Lock icon
             if (lockIcon != null)
                 lockIcon.SetActive(!cow.isUnlocked);
+
+            // + button (show only if not owned)
+            if (plusButton != null)
+                plusButton.gameObject.SetActive(!cow.isUnlocked);
 
             // Level text (show if owned)
             if (levelText != null)
@@ -61,7 +70,7 @@ namespace MilkFarm
 
             if (cow.isUnlocked)
             {
-                // Owned cow - show upgrade/max
+                // Owned - show upgrade/max
                 bool isMaxLevel = cow.level >= 3;
 
                 if (upgradeButton != null) upgradeButton.gameObject.SetActive(!isMaxLevel);
@@ -72,16 +81,12 @@ namespace MilkFarm
                     float cost = cowManager.GetUpgradeCost(cow.level);
                     upgradeCostText.text = $"${cost:F0}";
                 }
-                foreach (var item in openedObjects)
-                    item.SetActive(true);
             }
             else
             {
                 // Not owned - hide upgrade UI
                 if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
                 if (maxText != null) maxText.gameObject.SetActive(false);
-                foreach (var item in openedObjects)
-                    item.SetActive(false);
             }
         }
 

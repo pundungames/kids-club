@@ -18,7 +18,7 @@ namespace MilkFarm
         [SerializeField] private int cowsPerStable = 3;
 
         [Header("Stable Unlock Costs (Gems)")]
-        [SerializeField] private int[] stableUnlockCosts = { 0, 500, 1000, 2000 }; // Stable 1 free
+        [SerializeField] private int[] stableUnlockCosts = { 0, 10, 20, 30 }; // Stable 1 free
 
         private void Start()
         {
