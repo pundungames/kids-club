@@ -17,18 +17,30 @@ namespace MilkFarm
         public float feedingTimer;
         public float wateringTimer;
 
-        // Bu satırları ekleyin:
         public Transform transform;
-        public TroughController feedTroughController; // YENİ
-        public TroughController waterTroughController; // YENİ
+        public TroughController feedTroughController;
+        public TroughController waterTroughController;
 
         public Station(int idx)
         {
             index = idx;
             foodFill = 1f;
             waterFill = 1f;
-            feedingTimer = 30f;
-            wateringTimer = 30f;
+
+            // ✅ Timer'ları 0 yap - InitializeStations'da config'den doldurulacak
+            feedingTimer = 0f;
+            wateringTimer = 0f;
+        }
+
+        /// <summary>
+        /// Initialize with config values
+        /// </summary>
+        public void InitializeWithConfig(GameConfig config)
+        {
+            if (config == null) return;
+
+            feedingTimer = config.feedingInterval;   // e.g., 2000f
+            wateringTimer = config.wateringInterval; // e.g., 2000f
         }
 
         public bool HasFood => foodFill > 0f;
@@ -90,6 +102,10 @@ namespace MilkFarm
             for (int i = 0; i < stationCount; i++)
             {
                 Station station = new Station(i);
+
+                // ✅ Config ile initialize
+                station.InitializeWithConfig(config);
+
                 stations.Add(station);
 
                 if (i < stationSlots.Length)
@@ -112,8 +128,9 @@ namespace MilkFarm
                 }
             }
 
-            Debug.Log($"[StationManager] {stations.Count} istasyon başlatıldı.");
+            Debug.Log($"[StationManager] {stations.Count} istasyon başlatıldı (Config: {config.feedingInterval}s)");
         }
+
         /// <summary>
         /// Tap handler ekle (yemlik veya suluk için)
         /// </summary>

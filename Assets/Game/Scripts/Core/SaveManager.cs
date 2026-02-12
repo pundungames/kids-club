@@ -1,25 +1,23 @@
 using UnityEngine;
 using System;
+using Zenject;
 
 namespace MilkFarm
 {
     /// <summary>
     /// PlayerPrefs ile save/load işlemlerini yöneten singleton manager
     /// JSON formatında kayıt yapar
+    /// ✅ Config injection eklendi
     /// </summary>
     public class SaveManager : MonoBehaviour
     {
+        [Inject] private GameConfig config;
+
         private const string SAVE_KEY = "MilkFarm_SaveData_v1";
         private MilkFarmSaveData _currentSaveData;
 
         private void Awake()
         {
-            /*if (_instance != null && _instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
-            _instance = this;*/
             DontDestroyOnLoad(gameObject);
         }
 
@@ -51,6 +49,7 @@ namespace MilkFarm
 
         /// <summary>
         /// Oyunu yükle
+        /// ✅ Config uygulaması eklendi
         /// </summary>
         public MilkFarmSaveData LoadGame()
         {
@@ -64,6 +63,14 @@ namespace MilkFarm
                     if (data != null)
                     {
                         _currentSaveData = data;
+                         
+                        // ✅ Config'i stations'a uygula
+                        if (config != null)
+                        {
+                            _currentSaveData.ApplyConfigToStations(config);
+                            Debug.Log("[SaveManager] ✅ Config applied to stations");
+                        }
+
                         Debug.Log($"[SaveManager] Oyun yüklendi. Timestamp: {data.lastSaveTimestamp}");
                         return data;
                     }
@@ -72,12 +79,27 @@ namespace MilkFarm
                 // Kayıt yoksa yeni oluştur
                 Debug.Log("[SaveManager] Kayıt bulunamadı, yeni kayıt oluşturuluyor.");
                 _currentSaveData = new MilkFarmSaveData();
+
+                // ✅ Config'i yeni save'e uygula
+                if (config != null)
+                {
+                    _currentSaveData.ApplyConfigToStations(config);
+                    Debug.Log("[SaveManager] ✅ Config applied to new save");
+                }
+
                 return _currentSaveData;
             }
             catch (Exception e)
             {
                 Debug.LogError($"[SaveManager] Yükleme hatası: {e.Message}");
                 _currentSaveData = new MilkFarmSaveData();
+
+                // ✅ Config'i error save'e uygula
+                if (config != null)
+                {
+                    _currentSaveData.ApplyConfigToStations(config);
+                }
+
                 return _currentSaveData;
             }
         }
@@ -102,6 +124,13 @@ namespace MilkFarm
             PlayerPrefs.DeleteKey(SAVE_KEY);
             PlayerPrefs.Save();
             _currentSaveData = new MilkFarmSaveData();
+
+            // ✅ Config'i reset save'e uygula
+            if (config != null)
+            {
+                _currentSaveData.ApplyConfigToStations(config);
+            }
+
             Debug.Log("[SaveManager] Kayıtlar sıfırlandı!");
         }
 

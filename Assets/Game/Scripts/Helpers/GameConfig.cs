@@ -123,5 +123,31 @@ namespace MilkFarm
 
         [Header("Cow Level System")]
         public Sprite[] cowSpritesPerLevel;
+        public float[] productionTimesPerLevel = new float[3]
+{
+    30f,  // Level 1: 30 seconds
+    25f,  // Level 2: 25 seconds
+    20f   // Level 3: 20 seconds
+};
+
+
+        /// <summary>
+        /// Get production time for level
+        /// </summary>
+        public float GetProductionTime(int level)
+        {
+            int index = Mathf.Clamp(level - 1, 0, productionTimesPerLevel.Length - 1);
+            return productionTimesPerLevel[index];
+        }
+
+        /// <summary>
+        /// Get cow sprite for level (UI icon)
+        /// </summary>
+        public Sprite GetCowSprite(int level)
+        {
+            if (cowSpritesPerLevel == null || cowSpritesPerLevel.Length == 0) return null;
+            int index = Mathf.Clamp(level - 1, 0, cowSpritesPerLevel.Length - 1);
+            return cowSpritesPerLevel[index];
+        }
     }
 }

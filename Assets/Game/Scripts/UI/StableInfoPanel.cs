@@ -7,13 +7,13 @@ using Zenject;
 namespace MilkFarm
 {
     /// <summary>
-    /// Stable Info Panel - Handles cow + button clicks
+    /// Stable Info Panel - Event-driven refresh
     /// </summary>
     public class StableInfoPanel : MonoBehaviour
     {
         [Inject] private StableManager stableManager;
         [Inject] private CowManager cowManager;
-        [Inject] private MoneyManager moneyManager;
+        [Inject] private IAPManager iapManager; // ✅ Changed from MoneyManager
         [Inject] private UIManager uiManager;
 
         [Header("UI References")]
@@ -29,12 +29,25 @@ namespace MilkFarm
         private int currentStableIndex = -1;
         private List<CowRowUI> cowRows = new List<CowRowUI>();
 
+        // ✅ EVENT SUBSCRIPTION
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnCowUnlocked += HandleCowUnlocked;
+            MilkFarmEvents.OnCowUpgraded += HandleCowUpgraded;
+        }
+
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnCowUnlocked -= HandleCowUnlocked;
+            MilkFarmEvents.OnCowUpgraded -= HandleCowUpgraded;
+        }
+
         private void Start()
         {
             if (closeButton != null)
                 closeButton.onClick.AddListener(Close);
 
-            Close();
+           // Close();
         }
 
         public void Open(int stableIndex)
@@ -48,10 +61,13 @@ namespace MilkFarm
         public void Close()
         {
             if (panel != null) panel.SetActive(false);
+            currentStableIndex = -1;
         }
 
         private void Refresh()
         {
+            if (currentStableIndex < 0) return;
+
             var (current, max) = stableManager.GetStableCapacity(currentStableIndex);
 
             if (capacityText != null)
@@ -60,6 +76,8 @@ namespace MilkFarm
 
         private void RefreshCowList()
         {
+            if (currentStableIndex < 0) return;
+
             // Clear existing rows
             foreach (var row in cowRows)
                 if (row != null) Destroy(row.gameObject);
@@ -72,14 +90,36 @@ namespace MilkFarm
             foreach (var cow in cows)
             {
                 CowRowUI row = Instantiate(cowRowPrefab, cowListContent);
-                row.Setup(cow, cowManager, moneyManager);
+                row.Setup(cow, cowManager, iapManager);
                 row.onCowChanged += RefreshCowList;
-                row.onPurchaseClicked += OnCowPurchaseButtonClicked; // ✅ New
+                row.onPurchaseClicked += OnCowPurchaseButtonClicked;
                 cowRows.Add(row);
             }
         }
+        private void HandleCowUnlocked(int cowIndex)
+        {
+            // This stable'ın ineği mi?
+            int stableIndex = cowIndex / 3; // 3 cows per stable
 
-        // ✅ + button clicked → Open purchase panel
+            if (stableIndex != currentStableIndex) return;
+
+            Debug.Log($"[StableInfoPanel] 🔔 Cow {cowIndex} unlocked event!");
+
+            Refresh(); // ✅ Capacity güncelle (2/3 → 3/3)
+            RefreshCowList(); // ✅ Cow list güncelle
+        }
+
+        // ✅ EVENT HANDLER - Cow upgraded
+        private void HandleCowUpgraded(int cowIndex, int newLevel)
+        {
+            int stableIndex = cowIndex / 3;
+
+            if (stableIndex != currentStableIndex) return;
+
+            Debug.Log($"[StableInfoPanel] 🔔 Cow {cowIndex} upgraded to Lv{newLevel}!");
+            RefreshCowList();
+        }
+
         private void OnCowPurchaseButtonClicked(int cowIndex)
         {
             if (uiManager != null)

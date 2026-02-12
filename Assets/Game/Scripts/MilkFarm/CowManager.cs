@@ -422,18 +422,45 @@ namespace MilkFarm
         /// <summary>
         /// Upgrade cow level (with money)
         /// </summary>
-        public bool UpgradeCow(int globalIndex, MoneyManager money)
+        public bool UpgradeCow(int globalIndex, IAPManager iapManager)
         {
-            if (globalIndex < 0 || globalIndex >= cows.Count) return false;
+            Debug.Log($"[CowManager] 🔧 Upgrade attempt: Cow {globalIndex}");
+
+            if (globalIndex < 0 || globalIndex >= cows.Count)
+            {
+                Debug.LogError($"[CowManager] ❌ Invalid index: {globalIndex}");
+                return false;
+            }
 
             var cow = cows[globalIndex];
-            if (!cow.isUnlocked) return false;
-            if (cow.level >= 3) return false; // Max level
 
-            float cost = GetUpgradeCost(cow.level);
-            if (!money.CanAfford(cost)) return false;
+            if (!cow.isUnlocked)
+            {
+                Debug.LogError($"[CowManager] ❌ Cow {globalIndex} not unlocked!");
+                return false;
+            }
 
-            money.SpendMoney(cost);
+            if (cow.level >= 3)
+            {
+                Debug.LogWarning($"[CowManager] ❌ Cow {globalIndex} already max level!");
+                return false;
+            }
+
+            int gemCost = GetUpgradeCostGems(cow.level);
+            int currentGems = iapManager.GetCurrentGems();
+
+            Debug.Log($"[CowManager] 💎 Cost: {gemCost} gems, Current gems: {currentGems}");
+
+            if (!iapManager.CanAffordGems(gemCost))
+            {
+                Debug.LogWarning($"[CowManager] ❌ Not enough gems! Need {gemCost}, have {currentGems}");
+                return false;
+            }
+
+            // Spend gems
+            iapManager.SpendGems(gemCost);
+
+            // Upgrade
             cow.level++;
 
             // Update controller if spawned
@@ -443,37 +470,38 @@ namespace MilkFarm
             }
 
             MilkFarmEvents.CowUpgraded(globalIndex, cow.level);
-            Debug.Log($"[CowManager] Cow {globalIndex} upgraded to Level {cow.level}!");
+
+            Debug.Log($"[CowManager] ✅ Cow {globalIndex} upgraded to Level {cow.level}!");
             return true;
         }
-
         /// <summary>
         /// Get upgrade cost for current level
         /// </summary>
-        public float GetUpgradeCost(int currentLevel)
+        public int GetUpgradeCostGems(int currentLevel)
         {
-            if (currentLevel >= 3) return 0f;
-            return currentLevel == 1 ? 500f : 1000f; // Lv1→2: $500, Lv2→3: $1000
+            if (currentLevel >= 3) return 0; // Max level
+
+            // Level 1 → 2: 50 gems
+            // Level 2 → 3: 100 gems
+            return currentLevel == 1 ? 50 : 100;
         }
 
         /// <summary>
-        /// Get production time based on level
+        /// Get production time based on level (from GameConfig)
         /// </summary>
         public float GetProductionTime(int level)
         {
-            float[] times = { 30f, 25f, 20f }; // Level 1, 2, 3
-            int index = Mathf.Clamp(level - 1, 0, 2);
-            return times[index];
+            if (config == null) return 30f;
+            return config.GetProductionTime(level);
         }
 
         /// <summary>
-        /// Get cow sprite based on level
+        /// Get cow sprite based on level (from GameConfig)
         /// </summary>
         public Sprite GetCowSprite(int level)
         {
-            if (config == null || config.cowSpritesPerLevel == null) return null;
-            int index = Mathf.Clamp(level - 1, 0, config.cowSpritesPerLevel.Length - 1);
-            return config.cowSpritesPerLevel[index];
+            if (config == null) return null;
+            return config.GetCowSprite(level);
         }
 
         /// <summary>

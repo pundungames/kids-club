@@ -162,31 +162,67 @@ namespace MilkFarm
         private void LoadUnlockStates()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            if (saveData.iap == null) return;
+            if (saveData == null)
+            {
+                Debug.LogWarning("[AreaController] SaveData null!");
+                return;
+            }
 
             Debug.Log($"[AreaController] 📂 Loading unlock states for Area {areaIndex}...");
 
-            // Area unlock check
-            if (saveData.iap.unlockedAreas.Contains(areaIndex))
+            // ✅ 1. Area unlock check
+            if (saveData.unlockedAreas != null && saveData.unlockedAreas.Contains(areaIndex))
             {
                 Unlock();
+                Debug.Log($"[AreaController] ✅ Area {areaIndex} was unlocked (load)");
+            }
+            else
+            {
+                Debug.Log($"[AreaController] Area {areaIndex} is LOCKED");
             }
 
-            // Lock button'ları kapat (unlocked cow'lar için)
-            foreach (int globalIndex in saveData.iap.unlockedCows)
+            // ✅ 2. Close lock buttons for unlocked cows
+            // 3 cows per area (NOT 4!)
+
+            int cowsPerArea = 3; // ✅ Her area'da 3 inek
+            int startCowIndex = areaIndex * cowsPerArea;
+            // Area 0: Cows 0-2
+            // Area 1: Cows 3-5
+            // Area 2: Cows 6-8
+            // Area 3: Cows 9-11
+
+            if (saveData.cows == null || saveData.cows.Count == 0)
             {
-                int cowAreaIndex = globalIndex / 3;
-                if (cowAreaIndex == areaIndex)
+                Debug.LogWarning("[AreaController] No cow save data!");
+                return;
+            }
+
+            for (int i = 0; i < cowsPerArea; i++)
+            {
+                int globalCowIndex = startCowIndex + i;
+
+                // Check bounds
+                if (globalCowIndex >= saveData.cows.Count)
                 {
-                    int localSlot = globalIndex % 3;
-                    CloseLockButton(localSlot);
-                    Debug.Log($"[AreaController] Lock button {localSlot} kapatıldı (load)");
+                    Debug.LogWarning($"[AreaController] Cow index {globalCowIndex} out of bounds!");
+                    break;
+                }
+
+                var cowData = saveData.cows[globalCowIndex];
+
+                if (cowData != null && cowData.isUnlocked)
+                {
+                    CloseLockButton(i); // Local slot: 0, 1, 2
+                    Debug.Log($"[AreaController] ✅ Cow {globalCowIndex} unlocked → Slot {i} + button closed");
+                }
+                else
+                {
+                    Debug.Log($"[AreaController] Cow {globalCowIndex} LOCKED → Slot {i} + button OPEN");
                 }
             }
 
             Debug.Log($"[AreaController] ✅ Load complete!");
         }
-
         // === DEBUG ===
 
         [ContextMenu("Debug: Unlock Area")]

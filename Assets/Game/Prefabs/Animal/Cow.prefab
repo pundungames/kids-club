@@ -2518,6 +2518,10 @@ MonoBehaviour:
   milkIndicator: {fileID: 6232884175071930018}
   milkCountText: {fileID: 3391112125955769655}
   needsIndicator: {fileID: 0}
+  levelModels:
+  - {fileID: 1648260014605190052}
+  - {fileID: 212942382297181231}
+  - {fileID: 5271937239126061154}
   baseTimePerMilk: 30
   maxMilkStack: 6
 --- !u!65 &2243893619858744438

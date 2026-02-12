@@ -24,6 +24,9 @@ namespace MilkFarm
         [SerializeField] private TextMeshProUGUI milkCountText;
         [SerializeField] private GameObject needsIndicator;
 
+        [Header("Level Visuals (Hierarchy)")]
+        [SerializeField] private GameObject[] levelModels;
+
         [Header("Üretim Ayarları")]
         [SerializeField] private float baseTimePerMilk = 30f;
         [SerializeField] private int maxMilkStack = 6;
@@ -112,6 +115,10 @@ namespace MilkFarm
 
             UpdateMilkUI();
 
+            if (cowData != null)
+            {
+                UpdateLevelModel(cowData.level);
+            }
             Debug.Log($"[CowController {cowIndex}] Initialized - Stack: {milkStack}, Timer: {savedTimer:F1}s");
         }
 
@@ -393,17 +400,8 @@ namespace MilkFarm
         {
             if (config == null) return 30f;
 
-            // ✅ Level-based production time
-            float baseTime = 30f; // Default
-
-            if (cowManager != null && cowData != null)
-            {
-                baseTime = cowManager.GetProductionTime(cowData.level);
-            }
-            else if (config != null)
-            {
-                baseTime = config.baseProductionTime;
-            }
+            // ✅ Get production time from GameConfig
+            float baseTime = config.GetProductionTime(cowData?.level ?? 1);
 
             // IAP speed boost
             if (iapManager != null)
@@ -533,10 +531,40 @@ namespace MilkFarm
                         renderer.sprite = newSprite;
                     }
                 }
+                UpdateLevelModel(newLevel);
             }
 
             Debug.Log($"[CowController {cowIndex}] Level changed to {newLevel}");
         }
+        private void UpdateLevelModel(int level)
+        {
+            if (levelModels == null || levelModels.Length == 0)
+            {
+                Debug.LogWarning($"[CowController {cowIndex}] No level models assigned!");
+                return;
+            }
 
+            // Close all models
+            for (int i = 0; i < levelModels.Length; i++)
+            {
+                if (levelModels[i] != null)
+                {
+                    levelModels[i].SetActive(false);
+                }
+            }
+
+            // Open current level model
+            int modelIndex = Mathf.Clamp(level - 1, 0, levelModels.Length - 1);
+
+            if (levelModels[modelIndex] != null)
+            {
+                levelModels[modelIndex].SetActive(true);
+                Debug.Log($"[CowController {cowIndex}] ✅ Model switched to Level {level}");
+            }
+            else
+            {
+                Debug.LogWarning($"[CowController {cowIndex}] Level {level} model is null!");
+            }
+        }
     }
 }

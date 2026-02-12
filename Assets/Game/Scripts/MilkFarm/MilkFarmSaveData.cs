@@ -34,7 +34,6 @@ namespace MilkFarm
     {
         public TroughSaveData feedTrough = new TroughSaveData();
         public TroughSaveData waterTrough = new TroughSaveData();
-
         public float foodFill;
         public float waterFill;
         public float feedingTimer;
@@ -45,14 +44,30 @@ namespace MilkFarm
             feedTrough = new TroughSaveData();
             waterTrough = new TroughSaveData();
 
-            // Başlangıçta dolu
+            // ✅ Başlangıçta dolu (1f = %100)
             foodFill = 1f;
             waterFill = 1f;
-            feedingTimer = 300f; // 5 dakika
-            wateringTimer = 300f;
+
+            // ✅ Timer'ları 0 yap - InitializeWithConfig'de config'den doldurulacak
+            feedingTimer = 0f;
+            wateringTimer = 0f;
+        }
+
+        /// <summary>
+        /// Initialize timers from config
+        /// Call this after creating new save data
+        /// </summary>
+        public void InitializeWithConfig(GameConfig config)
+        {
+            if (config == null) return;
+
+            feedingTimer = config.feedingInterval;   // e.g., 2000f
+            wateringTimer = config.wateringInterval;  // e.g., 2000f
+
+            feedTrough.currentAmount = 100f;  // Full
+            waterTrough.currentAmount = 100f; // Full
         }
     }
-
     [Serializable]
     public class TroughSaveData
     {
@@ -130,9 +145,9 @@ namespace MilkFarm
     {
         // Money
         public float currentMoney;
+        public float pendingMoney;
+        public int pendingCoins;
 
-        public float pendingMoney; // ✅ YENİ: Stackde bekleyen
-        public int pendingCoins;   // ✅ YENİ: Stack'teki coin sayısı
         // Cows
         public List<CowSaveData> cows = new List<CowSaveData>();
 
@@ -149,63 +164,75 @@ namespace MilkFarm
         public long lastSaveTimestamp;
         public long lastPlayTime;
 
-        [Header("Unlock Lists")]
+        // Unlock Lists
         public List<int> unlockedCows = new List<int>();
         public List<int> unlockedAreas = new List<int>();
+
         /// <summary>
         /// Constructor - Yeni save için initialization
         /// </summary>
+        /// <summary>
+        /// Default constructor (for serialization)
+        /// </summary>
         public MilkFarmSaveData()
         {
-            currentMoney = 0f;
-            pendingMoney = 0f;
-            pendingCoins = 0;
-            packaging = new PackageSaveData();
-            iap = new IAPSaveData();
-            lastSaveTimestamp = 0;
-            lastPlayTime = 0;
-
-            // ✅ 12 inek initialize et (ilk inek unlocked)
-            InitializeCows(12, true); // İlk inek unlocked
-
-            // ✅ 4 istasyon initialize et
-            InitializeStations(4);
-
-            unlockedCows = new List<int> { 0, 1, 2 }; // First 3 free
-            unlockedAreas = new List<int> { 0 };      // First stable free
-
-            Debug.Log("[MilkFarmSaveData] Yeni save oluşturuldu: 12 inek, 4 istasyon (İlk inek unlocked)");
-        }
-
-        /// <summary>
-        /// İnekleri initialize et
-        /// </summary>
-        private void InitializeCows(int count, bool firstUnlocked = true)
-        {
+            // Initialize cows
             cows = new List<CowSaveData>();
-
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < 12; i++)
             {
-                bool unlocked = (i == 0 && firstUnlocked); // İlk inek unlocked
-                cows.Add(new CowSaveData(i, unlocked));
+                CowSaveData cow = new CowSaveData(index: i, i == 0);
+                cow.globalIndex = i;
+                cow.isUnlocked = (i == 0); // Only cow 0 unlocked
+                cow.level = 1;
+                cow.storedMilk = 0;
+                cow.productionTimer = 0f;
+                cows.Add(cow);
             }
 
-            Debug.Log($"[MilkFarmSaveData] {count} inek initialize edildi. İlk inek: {(firstUnlocked ? "UNLOCKED" : "locked")}");
+            // ✅ Initialize stations WITHOUT config (default values)
+            InitializeStations(4);
+
+            // Initialize packaging
+            packaging = new PackageSaveData();
+
+            // Initialize IAP
+            iap = new IAPSaveData();
+
+            Debug.Log("[MilkFarmSaveData] ✅ New save created: 12 cows (first unlocked), 4 stations");
         }
 
         /// <summary>
-        /// İstasyonları initialize et
+        /// Initialize stations with default values
+        /// Config will be applied later in SaveManager.LoadGame()
         /// </summary>
-        private void InitializeStations(int count)
+        public void InitializeStations(int stationCount)
         {
             stations = new List<StationSaveData>();
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < stationCount; i++)
             {
-                stations.Add(new StationSaveData());
+                StationSaveData station = new StationSaveData();
+                // Default values, will be updated from config later
+                stations.Add(station);
             }
 
-            Debug.Log($"[MilkFarmSaveData] {count} istasyon initialize edildi (dolu)");
+            Debug.Log($"[MilkFarmSaveData] {stationCount} station initialized");
+        }
+
+        /// <summary>
+        /// Apply config values to stations
+        /// Called from SaveManager after config is available
+        /// </summary>
+        public void ApplyConfigToStations(GameConfig config)
+        {
+            if (config == null) return;
+
+            foreach (var station in stations)
+            {
+                station.InitializeWithConfig(config);
+            }
+
+            Debug.Log($"[MilkFarmSaveData] ✅ Config applied to {stations.Count} stations");
         }
     }
 }

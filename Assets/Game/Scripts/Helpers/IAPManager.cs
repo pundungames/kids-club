@@ -179,13 +179,18 @@ namespace MilkFarm
                 return;
             }
 
-            // ✅ EASIEST: Direct unlock in save data
+            // Save data unlock
             var saveData = saveManager.GetCurrentSaveData();
             if (saveData == null) return;
 
-            if (cowIndex < 0 || cowIndex >= saveData.cows.Count) return;
+            if (cowIndex < 0 || cowIndex >= saveData.cows.Count)
+            {
+                Debug.LogError($"[IAPManager] Invalid cow index: {cowIndex}");
+                return;
+            }
 
             var cowData = saveData.cows[cowIndex];
+
             if (cowData.isUnlocked)
             {
                 Debug.LogWarning($"[IAPManager] Cow {cowIndex} already unlocked!");
@@ -194,7 +199,8 @@ namespace MilkFarm
 
             // Unlock in save data
             cowData.isUnlocked = true;
-            UnlockCow(cowIndex);
+            UnlockCow(cowIndex); // Add to unlockedCows list
+            saveManager.SaveGame(saveData);
 
             // Update runtime cow list
             var allCows = cowManager.GetAllCows();
@@ -203,9 +209,10 @@ namespace MilkFarm
                 allCows[cowIndex].isUnlocked = true;
             }
 
-            // Trigger cow manager to spawn
-            cowManager.LoadFromSaveData(); // This will spawn unlocked cows
+            // Reload to spawn
+            cowManager.LoadFromSaveData();
 
+            // ✅ FIRE EVENT (3D scene + UI güncellenir)
             MilkFarmEvents.CowUnlocked(cowIndex);
 
             Debug.Log($"[IAPManager] ✅ Cow {cowIndex} unlocked!");
@@ -226,7 +233,11 @@ namespace MilkFarm
             }
 
             // Unlock stable (free=true because gems already spent)
+            // This will add to unlockedAreas list
             stableManager.UnlockStable(areaIndex, free: true);
+
+            // ✅ FIRE EVENT (3D scene güncellenir)
+            MilkFarmEvents.AreaUnlocked(areaIndex);
 
             Debug.Log($"[IAPManager] ✅ Stable {areaIndex} unlocked!");
         }

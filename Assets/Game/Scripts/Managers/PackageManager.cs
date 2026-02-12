@@ -78,6 +78,9 @@ namespace MilkFarm
             capacityLevel = saveData.packaging.capacityLevel;
             UpdateCapacity();
 
+            // ✅ CRITICAL: Clear existing cases before loading!
+            ClearAllCases();
+
             // ✅ YENİ: Production stack load
             if (saveData.packaging.productionStackBottles != null)
             {
@@ -114,7 +117,37 @@ namespace MilkFarm
 
             Debug.Log($"[PackageManager] 📂 Loaded - Stack: {productionStack.Count}, Active: {(currentActiveCrate != null ? currentActiveCrate.landedMilkCount : 0)}/6");
         }
+        private void ClearAllCases()
+        {
+            // Clear production stack
+            foreach (var crate in productionStack)
+            {
+                if (crate != null && crate.gameObject != null)
+                {
+                    Destroy(crate.gameObject);
+                }
+            }
+            productionStack.Clear();
 
+            // Clear active crate
+            if (currentActiveCrate != null && currentActiveCrate.gameObject != null)
+            {
+                Destroy(currentActiveCrate.gameObject);
+            }
+            currentActiveCrate = null;
+
+            // Clear sales slots
+            for (int i = 0; i < salesSlotsContents.Length; i++)
+            {
+                if (salesSlotsContents[i] != null && salesSlotsContents[i].gameObject != null)
+                {
+                    Destroy(salesSlotsContents[i].gameObject);
+                }
+                salesSlotsContents[i] = null;
+            }
+
+            Debug.Log("[PackageManager] 🧹 Cleared all existing cases");
+        }
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();

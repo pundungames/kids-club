@@ -6,7 +6,7 @@ using Zenject;
 namespace MilkFarm
 {
     /// <summary>
-    /// Stable Selection Panel - Handles + button clicks
+    /// Stable Selection Panel - Event-driven refresh
     /// </summary>
     public class StableSelectionPanel : MonoBehaviour
     {
@@ -21,6 +21,23 @@ namespace MilkFarm
         [Header("Panels")]
         [SerializeField] private StableInfoPanel stableInfoPanel;
 
+        private void OnEnable()
+        {
+            MilkFarmEvents.OnAreaUnlocked += HandleAreaUnlocked;
+            MilkFarmEvents.OnCowUnlocked += HandleCowUnlocked; // ✅ EKLE
+        }
+
+        private void OnDisable()
+        {
+            MilkFarmEvents.OnAreaUnlocked -= HandleAreaUnlocked;
+            MilkFarmEvents.OnCowUnlocked -= HandleCowUnlocked; // ✅ EKLE
+        }
+
+        private void HandleCowUnlocked(int cowIndex)
+        {
+            Debug.Log($"[StableSelectionPanel] 🔔 Cow {cowIndex} unlocked event!");
+            RefreshAll(); // ✅ Tüm slot'ları güncelle (capacity text)
+        }
         private void Start()
         {
             if (closeButton != null)
@@ -32,10 +49,10 @@ namespace MilkFarm
                 int index = i;
                 stableSlots[i].Setup(index, stableManager);
                 stableSlots[i].onSlotClicked += OnStableSlotClicked;
-                stableSlots[i].onPurchaseClicked += OnPurchaseButtonClicked; // ✅ New
+                stableSlots[i].onPurchaseClicked += OnPurchaseButtonClicked;
             }
 
-            Close();
+            //Close();
         }
 
         public void Open()
@@ -55,19 +72,24 @@ namespace MilkFarm
                 slot.Refresh();
         }
 
+        // ✅ EVENT HANDLER - Area unlocked
+        private void HandleAreaUnlocked(int areaIndex)
+        {
+            Debug.Log($"[StableSelectionPanel] 🔔 Area {areaIndex} unlocked event!");
+            RefreshAll(); // UI güncelle
+        }
+
         private void OnStableSlotClicked(int stableIndex)
         {
             bool isUnlocked = stableManager.IsStableUnlocked(stableIndex);
 
             if (isUnlocked)
             {
-                // Open stable info panel
                 if (stableInfoPanel != null)
                     stableInfoPanel.Open(stableIndex);
             }
         }
 
-        // ✅ + button clicked → Open purchase panel
         private void OnPurchaseButtonClicked(int stableIndex)
         {
             if (uiManager != null)
