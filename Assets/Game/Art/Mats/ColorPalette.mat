@@ -120,7 +120,7 @@ Material:
     - _Offset1: 0
     - _Offset2: 0
     - _Outline: 1
-    - _OutlineWidth: 0.82
+    - _OutlineWidth: 0.4
     - _Parallax: 0.005
     - _QueueOffset: 0
     - _RampSmooth: 0.1

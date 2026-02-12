@@ -27,8 +27,8 @@ MonoBehaviour:
   customerMinRequest: 1
   customerMaxRequest: 4
   moneyPerMilk: 1
-  feedingInterval: 10000
-  wateringInterval: 10000
+  feedingInterval: 20000
+  wateringInterval: 20000
   feedingTapFill: 0.25
   wateringTapFill: 0.25
   baseCostCow: 50

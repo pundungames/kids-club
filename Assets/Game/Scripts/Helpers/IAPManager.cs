@@ -210,7 +210,7 @@ namespace MilkFarm
             }
 
             // Reload to spawn
-            cowManager.LoadFromSaveData();
+            cowManager.SpawnCow(cowIndex);
 
             // ✅ FIRE EVENT (3D scene + UI güncellenir)
             MilkFarmEvents.CowUnlocked(cowIndex);

@@ -5,13 +5,29 @@ using Zenject;
 namespace MilkFarm
 {
     /// <summary>
-    /// Offline Progress Manager - COMPLETE VERSION
-    /// - Level-based production time ✅
-    /// - IAP speed boost ✅
-    /// - Auto collect to packaging ✅
-    /// - Trough consumption ✅
-    /// - Production stops when trough empty ✅
-    /// - Production stops when packaging full ✅
+    /// Offline Progress Manager v3 - SIFIRDAN
+    /// 
+    /// Mantık (senin tanımın):
+    /// ─────────────────────────────────────────────────────────
+    /// 1 area = 1 yem trough + 1 su trough (TroughController)
+    /// 1 area max 3 inek
+    /// 
+    /// feedingInterval = trough'un 1 inekle kaç saniyede biteceği
+    /// 3 inek varsa → feedingInterval / 3 saniyede biter
+    /// 
+    /// Yani 1 ineğin üretim yapabileceği süre = feedingInterval / inekSayısı
+    /// 
+    /// productionTime = 1 süt üretimi kaç saniye (level bazlı)
+    /// üretilebilecek süt = effectiveTime / productionTime
+    /// 
+    /// TroughSaveData.currentAmount: 0-100 (save formatı)
+    /// TroughController.currentFill: 0-1 (runtime formatı)
+    /// Dönüşüm: currentFill = currentAmount / 100
+    /// ─────────────────────────────────────────────────────────
+    /// 
+    /// BU SINIF SADECE SAVEDATA ÜZERİNDE ÇALIŞIR.
+    /// Runtime objelere (TroughController, CowController) DOKUNMAZ.
+    /// İşi bitince ReloadAllManagers() çağırır, runtime güncel saveData'yı yükler.
     /// </summary>
     public class OfflineProgressManager : MonoBehaviour
     {
@@ -30,345 +46,382 @@ namespace MilkFarm
         [SerializeField] private TMPro.TextMeshProUGUI packagesText;
         [SerializeField] private TMPro.TextMeshProUGUI warningText;
 
-        private const int MAX_MILK_STACK = 6;        // Per cow
-        private const int MAX_BOTTLES_PER_CASE = 6;  // Per milk case
-        private const int MAX_PRODUCTION_STACK = 8;  // Max cases in production stack
+        private const int MAX_MILK_STACK = 6;
+        private const int MAX_BOTTLES_PER_CASE = 6;
+        private const int MAX_PRODUCTION_STACK = 8;
+
+        // ═══════════════════════════════════════
+        //  LIFECYCLE
+        // ═══════════════════════════════════════
 
         private void Start()
         {
-            // ✅ Delay to let other managers load first
             StartCoroutine(DelayedCalculate());
         }
 
         private System.Collections.IEnumerator DelayedCalculate()
         {
-            // Wait for all managers to finish Start()
+            // Diğer manager'lar Start() bitsin
             yield return new WaitForEndOfFrame();
 
             CalculateOfflineProgress();
-
-            // ✅ Reload managers to reflect offline changes
-            Debug.Log("[OfflineProgress] Reloading managers...");
-
-            // Reload PackageManager
-            var packageManager = FindObjectOfType<PackageManager>();
-            if (packageManager != null)
-            {
-                packageManager.LoadFromSaveData();
-            }
-
-            // Reload StationManager (Troughs)
-            var stationManager = FindObjectOfType<StationManager>();
-            if (stationManager != null)
-            {
-                stationManager.LoadFromSaveData();
-            }
-
-            Debug.Log("[OfflineProgress] Managers reloaded!");
+            ReloadAllManagers();
         }
+
+        // ═══════════════════════════════════════
+        //  ANA GİRİŞ NOKTASI
+        // ═══════════════════════════════════════
 
         public void CalculateOfflineProgress()
         {
             var saveData = saveManager.GetCurrentSaveData();
 
+            // ── İlk oyun ──
             if (saveData.lastPlayTime == 0)
             {
-                Debug.Log("[OfflineProgress] First play");
+                Debug.Log("[Offline] İlk oyun, skip");
                 SaveCurrentTime();
                 return;
             }
 
-            DateTime lastPlay = DateTimeOffset.FromUnixTimeSeconds(saveData.lastPlayTime).DateTime;
-            DateTime now = DateTime.Now;
-            TimeSpan deltaTimeSpan = now - lastPlay;
-            float deltaSeconds = (float)deltaTimeSpan.TotalSeconds;
+            // ── Geçen süre ──
+            float deltaSeconds = GetOfflineSeconds(saveData);
 
-            Debug.Log($"[OfflineProgress] Delta: {deltaTimeSpan}");
-
-            if (!ValidateTimeDelta(deltaSeconds, out float validatedSeconds))
+            if (deltaSeconds < 0f)
             {
+                Debug.LogWarning("[Offline] Negatif zaman, skip");
                 SaveCurrentTime();
                 return;
             }
 
-            deltaSeconds = validatedSeconds;
-
-            if (deltaSeconds < 60f) // Less than 1 minute
+            if (deltaSeconds < 60f)
             {
+                Debug.Log($"[Offline] {deltaSeconds:F0}s < 60s, skip");
                 SaveCurrentTime();
                 return;
             }
 
-            Debug.Log($"[OfflineProgress] 🎯 Processing {deltaSeconds / 60f:F1} minutes offline");
+            // Max cap
+            float maxSec = maxOfflineDays * 86400f;
+            if (deltaSeconds > maxSec) deltaSeconds = maxSec;
 
-            ProcessOfflineProgress(deltaSeconds, out OfflineProgressResult result);
+            Debug.Log($"[Offline] ═══════════════════════════════════");
+            Debug.Log($"[Offline] 🕐 Offline süresi: {FormatDuration(deltaSeconds)} ({deltaSeconds:F0}s)");
+
+            // ── DEBUG: İşlem ÖNCE saveData snapshot ──
+            LogSaveDataSnapshot("İŞLEM ÖNCESİ", saveData);
+
+            // ── İşle ──
+            OfflineProgressResult result = Process(saveData, deltaSeconds);
+
+            // ── DEBUG: İşlem SONRA saveData snapshot ──
+            LogSaveDataSnapshot("İŞLEM SONRASI", saveData);
+
+            // ── Kaydet ──
+            saveManager.SaveGame(saveData);
             SaveCurrentTime();
 
+            // ── Popup ──
             if (showWelcomePopup && (result.totalMilkProduced > 0 || result.totalPackagesCreated > 0))
             {
                 ShowWelcomePopup(result);
             }
 
-            Debug.Log($"[OfflineProgress] ✅ Milk: {result.totalMilkProduced}, Packages: {result.totalPackagesCreated}");
+            Debug.Log($"[Offline] ✅ Sonuç: {result.totalMilkProduced} süt, {result.totalPackagesCreated} paket");
+            Debug.Log($"[Offline] ═══════════════════════════════════");
+
+            // OfflineProgressResult sınıfından veya hesaplanan değişkenlerden verileri çekiyoruz
+            float passedMinutes = deltaSeconds / 60f;
+            int totalProducedMilk = result.totalMilkProduced; // Senin değişken ismine göre revize et
+            int totalSpawnedCrates = result.totalPackagesCreated; // Senin değişken ismine göre revize et
+
+            Debug.LogError(string.Format(
+                "<color=yellow>[OFFLINE ÖZET]</color> Geçen Süre: <b>{0:F1} dk</b> | Üretilen Süt: <b>{1}</b> | Oluşturulan Kasa: <b>{2}</b>",
+                passedMinutes,
+                totalProducedMilk,
+                totalSpawnedCrates
+            ));
         }
 
-        private bool ValidateTimeDelta(float deltaSeconds, out float validatedSeconds)
+        // ═══════════════════════════════════════
+        //  İŞLEME
+        // ═══════════════════════════════════════
+
+        private OfflineProgressResult Process(MilkFarmSaveData saveData, float offlineSeconds)
         {
-            validatedSeconds = deltaSeconds;
+            var result = new OfflineProgressResult();
+            result.deltaTime = offlineSeconds;
+            float iapSpeed = GetIAPSpeed(saveData);
 
-            if (deltaSeconds < 0)
+            int totalPotentialMilk = 0;
+
+            for (int s = 0; s < saveData.stations.Count; s++)
             {
-                Debug.LogWarning("[OfflineProgress] Negative time detected!");
-                validatedSeconds = 0;
-                return false;
+                var station = saveData.stations[s];
+                int cowCount = CountCowsInStation(s, saveData);
+                if (cowCount == 0 || station.feedTrough.currentAmount <= 0f || station.waterTrough.currentAmount <= 0f) continue;
+
+                float feedFullLife = config.feedingInterval / cowCount;
+                float waterFullLife = config.wateringInterval / cowCount;
+                float troughLife = Mathf.Min((station.feedTrough.currentAmount / 100f) * feedFullLife, (station.waterTrough.currentAmount / 100f) * waterFullLife);
+                float effectiveTime = Mathf.Min(offlineSeconds, troughLife);
+
+                // Kaynak azaltma
+                station.feedTrough.currentAmount -= (effectiveTime / feedFullLife) * 100f;
+                station.waterTrough.currentAmount -= (effectiveTime / waterFullLife) * 100f;
+                station.foodFill = station.feedTrough.currentAmount / 100f;
+                station.waterFill = station.waterTrough.currentAmount / 100f;
+
+                // İneklerin üretimini hesapla
+                int startCow = s * config.cowsPerStation;
+                int endCow = startCow + config.cowsPerStation;
+
+                for (int c = startCow; c < endCow && c < saveData.cows.Count; c++)
+                {
+                    var cow = saveData.cows[c];
+                    if (!cow.isUnlocked) continue;
+
+                    float prodTime = config.GetProductionTime(cow.level) / iapSpeed;
+                    float totalTime = cow.productionTimer + effectiveTime;
+
+                    int cycles = Mathf.FloorToInt(totalTime / prodTime);
+                    cow.productionTimer = totalTime % prodTime; // Timer her zaman güncellenir
+
+                    totalPotentialMilk += cycles;
+                }
             }
 
-            float maxSeconds = maxOfflineDays * 86400f;
-            if (deltaSeconds > maxSeconds)
+            // ─────────────────────────────────────
+            // ŞİMDİ DAĞITIM YAPALIM
+            // ─────────────────────────────────────
+
+            // 1. Önce paketleme alanına (kasalara) göndermeyi dene
+            int remainingMilk = DistributeToPackaging(saveData, totalPotentialMilk, result);
+
+            // 2. Eğer paketleme alanı dolduysa ve hala süt varsa, ineklerin sırtına (storedMilk) ekle
+            if (remainingMilk > 0)
             {
-                Debug.LogWarning($"[OfflineProgress] Capping to {maxOfflineDays} days");
-                validatedSeconds = maxSeconds;
+                DistributeToCowStacks(saveData, remainingMilk);
+                Debug.Log($"[Offline] Paketleme doldu! {remainingMilk} adet süt ineklerin üzerinde biriktirildi.");
             }
 
-            return true;
+            result.totalMilkProduced = totalPotentialMilk; // Toplamda kaç süt "üretilmeye çalışıldı"
+            return result;
+        }
+        // ═══════════════════════════════════════
+        //  PAKETLEME
+        // ═══════════════════════════════════════
+        private int DistributeToPackaging(MilkFarmSaveData saveData, int amount, OfflineProgressResult result)
+        {
+            int distributed = 0;
+
+            for (int i = 0; i < amount; i++)
+            {
+                // Paketleme kapasite kontrolü
+                int currentCases = saveData.packaging.productionStackBottles.Count;
+                if (currentCases >= MAX_PRODUCTION_STACK) break;
+
+                saveData.packaging.activeCrateBottles++;
+                distributed++;
+
+                if (saveData.packaging.activeCrateBottles >= MAX_BOTTLES_PER_CASE)
+                {
+                    saveData.packaging.productionStackBottles.Add(MAX_BOTTLES_PER_CASE);
+                    saveData.packaging.activeCrateBottles = 0;
+                    result.totalPackagesCreated++;
+                }
+            }
+
+            result.totalBottlesPackaged = distributed;
+            return amount - distributed; // Paketlenemeyen, artan süt miktarı
         }
 
-        private void ProcessOfflineProgress(float deltaSeconds, out OfflineProgressResult result)
+        private void DistributeToCowStacks(MilkFarmSaveData saveData, int remainingMilk)
         {
-            result = new OfflineProgressResult();
-            result.deltaTime = deltaSeconds;
+            // Sadece unlock edilmiş inekleri filtrele
+            var unlockedCows = saveData.cows.FindAll(c => c.isUnlocked);
+            if (unlockedCows.Count == 0) return;
 
-            var saveData = saveManager.GetCurrentSaveData();
+            int milkPerCow = remainingMilk;
 
-            // ✅ IAP speed multiplier (applies to all cows)
-            float iapSpeedMultiplier = 1f;
-            if (saveData.iap != null)
+            foreach (var cow in unlockedCows)
             {
-                switch (saveData.iap.speedTier)
-                {
-                    case 1: iapSpeedMultiplier = 1.5f; break;
-                    case 2: iapSpeedMultiplier = 2f; break;
-                }
+                if (milkPerCow <= 0) break;
+
+                int currentSpace = MAX_MILK_STACK - cow.storedMilk;
+                int toAdd = Mathf.Min(milkPerCow, currentSpace);
+
+                cow.storedMilk += toAdd;
+                milkPerCow -= toAdd;
             }
-
-            Debug.Log($"[OfflineProgress] IAP Speed Multiplier: {iapSpeedMultiplier}x");
-            Debug.Log($"[OfflineProgress] Total cows in save: {saveData.cows.Count}");
-
-            // ✅ Process each cow (from SAVE DATA, not runtime!)
-            for (int i = 0; i < saveData.cows.Count; i++)
-            {
-                var cowSaveData = saveData.cows[i];
-
-                Debug.Log($"[OfflineProgress] --- Cow {i} ---");
-                Debug.Log($"[OfflineProgress] Cow {i}: Unlocked={cowSaveData.isUnlocked}, Level={cowSaveData.level}");
-
-                if (!cowSaveData.isUnlocked)
-                {
-                    Debug.Log($"[OfflineProgress] Cow {i}: LOCKED, skipping");
-                    continue;
-                }
-
-                Debug.Log($"[OfflineProgress] Cow {i}: UNLOCKED, processing...");
-                int stationIndex = i / config.cowsPerStation;
-
-                // Get trough data
-                var stationData = saveData.stations[stationIndex];
-                var feedTrough = stationData.feedTrough;
-                var waterTrough = stationData.waterTrough;
-
-                float feedAmount = feedTrough.currentAmount;   // 0-100
-                float waterAmount = waterTrough.currentAmount; // 0-100
-
-                // Calculate how long troughs will last
-                float troughLifetime = CalculateTroughLifetime(feedAmount, waterAmount, stationIndex, saveData);
-                float effectiveTime = Mathf.Min(deltaSeconds, troughLifetime);
-
-                if (effectiveTime <= 0)
-                {
-                    Debug.Log($"[OfflineProgress] Cow {i}: No resources, skipping");
-                    continue;
-                }
-
-                // ✅ Level-based production time (from GameConfig)
-                float baseProductionTime = config.GetProductionTime(cowSaveData.level);
-
-                // ✅ Apply IAP speed boost
-                float productionTime = baseProductionTime / iapSpeedMultiplier;
-
-                Debug.Log($"[OfflineProgress] Cow {i} (Lv{cowSaveData.level}): Base {baseProductionTime}s → {productionTime}s (IAP {iapSpeedMultiplier}x)");
-
-                // ✅ Timer is REMAINING time (not elapsed)
-                // cowSaveData.productionTimer = how many seconds LEFT in current cycle
-                // Example: timer = 10s (10s remaining)
-                // Offline: 600s passed
-                // Total production time: 10s (remaining) + 600s (offline) = 610s
-                // Cycles: 610 / 30 = 20.33 → 20 complete cycles
-                // New timer: 610 % 30 = 10s remaining
-
-                float totalProductionTime = cowSaveData.productionTimer + effectiveTime;
-                int cycles = Mathf.FloorToInt(totalProductionTime / productionTime);
-                float newRemainingTimer = totalProductionTime % productionTime;
-
-                Debug.Log($"[OfflineProgress] Cow {i}: Timer {cowSaveData.productionTimer:F1}s + Offline {effectiveTime:F1}s = {totalProductionTime:F1}s");
-                Debug.Log($"[OfflineProgress] Cow {i}: Cycles: {cycles}, New timer: {newRemainingTimer:F1}s");
-
-                // ✅ Produce milk (capped by cow stack)
-                int currentMilk = cowSaveData.storedMilk;
-                int milkCanProduce = Mathf.Min(cycles, MAX_MILK_STACK - currentMilk);
-
-                if (milkCanProduce > 0)
-                {
-                    cowSaveData.storedMilk += milkCanProduce;
-                    result.totalMilkProduced += milkCanProduce;
-                    Debug.Log($"[OfflineProgress] Cow {i}: Produced {milkCanProduce} milk (stack: {currentMilk} → {cowSaveData.storedMilk})");
-                }
-
-                // ✅ Update timer (REMAINING time)
-                cowSaveData.productionTimer = newRemainingTimer;
-
-                // ✅ Consume troughs
-                float feedConsumed = CalculateConsumption(effectiveTime, stationIndex, saveData);
-                float waterConsumed = CalculateConsumption(effectiveTime, stationIndex, saveData);
-
-                feedTrough.currentAmount = Mathf.Max(0, feedAmount - feedConsumed);
-                waterTrough.currentAmount = Mathf.Max(0, waterAmount - waterConsumed);
-
-                Debug.Log($"[OfflineProgress] Cow {i}: Troughs - Feed {feedAmount:F1} → {feedTrough.currentAmount:F1}, Water {waterAmount:F1} → {waterTrough.currentAmount:F1}");
-            }
-
-            // ✅ Auto-collect milk to packaging
-            CollectMilkToPackaging(saveData, out int bottlesPackaged);
-            result.totalBottlesPackaged = bottlesPackaged;
-            result.totalPackagesCreated = bottlesPackaged / MAX_BOTTLES_PER_CASE;
-
-            // Check warnings
-            result.feedEmpty = CheckIfAnyTroughEmpty(saveData, true);
-            result.waterEmpty = CheckIfAnyTroughEmpty(saveData, false);
-
-            saveManager.SaveGame(saveData);
         }
-
-        /// <summary>
-        /// Auto-collect all milk from cows to packaging
-        /// </summary>
-        private void CollectMilkToPackaging(MilkFarmSaveData saveData, out int totalBottlesPackaged)
+        private void CollectMilkToPackaging(MilkFarmSaveData saveData, OfflineProgressResult result)
         {
-            totalBottlesPackaged = 0;
+            int totalBottles = 0;
 
-            // Check current packaging capacity
             int currentCases = saveData.packaging.productionStackBottles.Count;
-            int activeCrateBottles = saveData.packaging.activeCrateBottles;
-
-            if (activeCrateBottles > 0) currentCases++; // Active crate counts
+            if (saveData.packaging.activeCrateBottles > 0) currentCases++;
 
             if (currentCases >= MAX_PRODUCTION_STACK)
             {
-                Debug.Log("[OfflineProgress] Packaging full, cannot collect milk");
+                Debug.Log("[Offline] Paketleme dolu, toplama yok");
                 return;
             }
 
-            // Collect from each cow
-            foreach (var cowData in saveData.cows)
+            foreach (var cow in saveData.cows)
             {
-                if (!cowData.isUnlocked) continue;
-                if (cowData.storedMilk <= 0) continue;
+                if (!cow.isUnlocked || cow.storedMilk <= 0) continue;
 
-                int milkToCollect = cowData.storedMilk;
+                int milk = cow.storedMilk;
 
-                for (int i = 0; i < milkToCollect; i++)
+                for (int m = 0; m < milk; m++)
                 {
-                    // Check if packaging is full
                     if (saveData.packaging.productionStackBottles.Count >= MAX_PRODUCTION_STACK)
-                    {
-                        Debug.Log("[OfflineProgress] Packaging full during collection");
-                        return;
-                    }
+                        goto done;
 
-                    // Add to active crate or create new
-                    if (saveData.packaging.activeCrateBottles < MAX_BOTTLES_PER_CASE)
-                    {
-                        saveData.packaging.activeCrateBottles++;
-                        totalBottlesPackaged++;
+                    saveData.packaging.activeCrateBottles++;
+                    totalBottles++;
 
-                        // Complete crate?
-                        if (saveData.packaging.activeCrateBottles >= MAX_BOTTLES_PER_CASE)
-                        {
-                            // Move to production stack
-                            saveData.packaging.productionStackBottles.Add(MAX_BOTTLES_PER_CASE);
-                            saveData.packaging.activeCrateBottles = 0;
-                            Debug.Log($"[OfflineProgress] ✅ Crate completed! Stack: {saveData.packaging.productionStackBottles.Count}");
-                        }
-                    }
-                    else
+                    if (saveData.packaging.activeCrateBottles >= MAX_BOTTLES_PER_CASE)
                     {
-                        // Should not happen (active crate should be < 6)
-                        Debug.LogWarning("[OfflineProgress] Active crate overflow!");
+                        saveData.packaging.productionStackBottles.Add(MAX_BOTTLES_PER_CASE);
+                        saveData.packaging.activeCrateBottles = 0;
                     }
                 }
 
-                // Clear cow milk
-                cowData.storedMilk = 0;
+                cow.storedMilk = 0;
             }
 
-            Debug.Log($"[OfflineProgress] 📦 Collected {totalBottlesPackaged} bottles, Created {totalBottlesPackaged / MAX_BOTTLES_PER_CASE} complete cases");
+        done:
+            result.totalBottlesPackaged = totalBottles;
+            result.totalPackagesCreated = totalBottles / MAX_BOTTLES_PER_CASE;
+
+            Debug.Log($"[Offline] 📦 {totalBottles} şişe → {result.totalPackagesCreated} kasa");
         }
 
-        private float CalculateTroughLifetime(float feedAmount, float waterAmount, int stationIndex, MilkFarmSaveData saveData)
-        {
-            int activeCowCount = GetActiveCowCountForStation(stationIndex, saveData);
-            if (activeCowCount == 0) return float.MaxValue;
+        // ═══════════════════════════════════════
+        //  YARDIMCI
+        // ═══════════════════════════════════════
 
-            // ✅ Use feedingInterval/wateringInterval from config
-            // How long does 100 units last with X cows?
-            // If 1 cow drains 100 units in feedingInterval seconds:
-            // consumptionPerSecond = 100 / feedingInterval
-            // For X cows: totalRate = consumptionPerSecond * activeCowCount
-
-            float feedConsumptionPerSecond = 100f / config.feedingInterval;  // e.g., 100 / 2000 = 0.05 per second
-            float waterConsumptionPerSecond = 100f / config.wateringInterval; // e.g., 100 / 2000 = 0.05 per second
-
-            float totalFeedRate = feedConsumptionPerSecond * activeCowCount;
-            float totalWaterRate = waterConsumptionPerSecond * activeCowCount;
-
-            float feedLifetime = totalFeedRate > 0 ? feedAmount / totalFeedRate : float.MaxValue;
-            float waterLifetime = totalWaterRate > 0 ? waterAmount / totalWaterRate : float.MaxValue;
-
-            return Mathf.Min(feedLifetime, waterLifetime);
-        }
-
-        private float CalculateConsumption(float deltaSeconds, int stationIndex, MilkFarmSaveData saveData)
-        {
-            int activeCowCount = GetActiveCowCountForStation(stationIndex, saveData);
-
-            // ✅ Use feedingInterval from config
-            float consumptionPerSecond = 100f / config.feedingInterval; // e.g., 100 / 2000 = 0.05
-
-            return deltaSeconds * consumptionPerSecond * activeCowCount;
-        }
-
-        private int GetActiveCowCountForStation(int stationIndex, MilkFarmSaveData saveData)
+        private int CountCowsInStation(int stationIndex, MilkFarmSaveData saveData)
         {
             int count = 0;
-            int startIndex = stationIndex * config.cowsPerStation;
-            int endIndex = startIndex + config.cowsPerStation;
-
-            for (int i = startIndex; i < endIndex && i < saveData.cows.Count; i++)
+            int start = stationIndex * config.cowsPerStation;
+            int end = start + config.cowsPerStation;
+            for (int i = start; i < end && i < saveData.cows.Count; i++)
             {
                 if (saveData.cows[i].isUnlocked) count++;
             }
-
             return count;
         }
 
-        private bool CheckIfAnyTroughEmpty(MilkFarmSaveData saveData, bool checkFeed)
+        private float GetIAPSpeed(MilkFarmSaveData saveData)
         {
-            foreach (var station in saveData.stations)
+            if (saveData.iap == null) return 1f;
+            switch (saveData.iap.speedTier)
             {
-                var trough = checkFeed ? station.feedTrough : station.waterTrough;
-                if (trough.currentAmount <= 0) return true;
+                case 1: return 1.5f;
+                case 2: return 2f;
+                default: return 1f;
             }
-            return false;
         }
+
+        private float GetOfflineSeconds(MilkFarmSaveData saveData)
+        {
+            // Kaydedilen zamanı UTC olarak yorumla
+            DateTimeOffset lastPlay = DateTimeOffset.FromUnixTimeSeconds(saveData.lastPlayTime);
+            // Şu anki zamanı UTC olarak al
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            return (float)(now - lastPlay).TotalSeconds;
+        }
+
+        private void SaveCurrentTime()
+        {
+            var saveData = saveManager.GetCurrentSaveData();
+            // ToUnixTimeSeconds() zaten UTC tabanlı çalışır, 
+            // ama UtcNow ile çağırmak kafa karışıklığını önler.
+            saveData.lastPlayTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            saveManager.SaveGame(saveData);
+        }
+        // ═══════════════════════════════════════
+        //  RELOAD
+        // ═══════════════════════════════════════
+
+        /// <summary>
+        /// SaveData güncelledik, şimdi runtime manager'ları reload et.
+        /// StationManager.LoadFromSaveData() → TroughController.LoadFromSaveData()
+        ///   → currentFill = data.currentAmount / 100f
+        /// Bu sayede runtime trough'lar güncel değeri alır.
+        /// </summary>
+        private void ReloadAllManagers()
+        {
+            Debug.Log("[Offline] 🔄 Manager reload başlıyor...");
+
+            var packageManager = FindObjectOfType<PackageManager>();
+            if (packageManager != null)
+            {
+                packageManager.LoadFromSaveData();
+                Debug.Log("[Offline] ✅ PackageManager reloaded");
+            }
+
+            var stationManager = FindObjectOfType<StationManager>();
+            if (stationManager != null)
+            {
+                // ÖNEMLI: Bu çağrı TroughController.LoadFromSaveData()'yı da çağırır
+                // LoadFromSaveData içinde: currentFill = data.currentAmount / 100f
+                stationManager.LoadFromSaveData();
+                Debug.Log("[Offline] ✅ StationManager reloaded");
+
+                // DEBUG: Reload sonrası trough değerlerini logla
+                for (int i = 0; i < stationManager.stations.Count; i++)
+                {
+                    var s = stationManager.stations[i];
+                    float feedFill = s.feedTroughController != null ? s.feedTroughController.GetFillAmount() : -1f;
+                    float waterFill = s.waterTroughController != null ? s.waterTroughController.GetFillAmount() : -1f;
+                    Debug.Log($"[Offline] RELOAD SONRASI Station {i}: " +
+                              $"feedTrough.currentFill={feedFill:F3} ({feedFill * 100:F1}%), " +
+                              $"waterTrough.currentFill={waterFill:F3} ({waterFill * 100:F1}%), " +
+                              $"station.foodFill={s.foodFill:F3}, station.waterFill={s.waterFill:F3}");
+                }
+            }
+
+            // CowManager reload ETME! CowController zaten trough referanslarını tutuyor.
+            // Trough reload olunca currentFill güncellenmiş oluyor,
+            // CowController.HasResource kontrolü otomatik çalışır.
+
+            Debug.Log("[Offline] 🔄 Manager reload bitti");
+        }
+
+        // ═══════════════════════════════════════
+        //  DEBUG LOG
+        // ═══════════════════════════════════════
+
+        private void LogSaveDataSnapshot(string label, MilkFarmSaveData saveData)
+        {
+            Debug.Log($"[Offline] ── {label} ──");
+            for (int s = 0; s < saveData.stations.Count; s++)
+            {
+                var st = saveData.stations[s];
+                Debug.Log($"[Offline]   Station {s}: feed.currentAmount={st.feedTrough.currentAmount:F1}, " +
+                          $"water.currentAmount={st.waterTrough.currentAmount:F1}, " +
+                          $"foodFill={st.foodFill:F3}, waterFill={st.waterFill:F3}");
+            }
+            for (int c = 0; c < saveData.cows.Count; c++)
+            {
+                var cow = saveData.cows[c];
+                if (cow.isUnlocked)
+                {
+                    Debug.Log($"[Offline]   Cow {c}: milk={cow.storedMilk}, timer={cow.productionTimer:F1}s, lv={cow.level}");
+                }
+            }
+            Debug.Log($"[Offline]   Packaging: activeCrate={saveData.packaging.activeCrateBottles}, " +
+                      $"stack={saveData.packaging.productionStackBottles.Count}");
+        }
+
+        // ═══════════════════════════════════════
+        //  UI
+        // ═══════════════════════════════════════
 
         private void ShowWelcomePopup(OfflineProgressResult result)
         {
@@ -380,20 +433,18 @@ namespace MilkFarm
 
             if (offlineTimeText != null)
                 offlineTimeText.text = FormatDuration(result.deltaTime);
-
             if (milkProducedText != null)
                 milkProducedText.text = $"{result.totalMilkProduced} 🥛";
-
             if (packagesText != null)
                 packagesText.text = $"{result.totalPackagesCreated} 📦";
 
             if (warningText != null)
             {
-                string warning = "";
-                if (result.feedEmpty) warning += "⚠️ Feed trough empty!\n";
-                if (result.waterEmpty) warning += "⚠️ Water trough empty!\n";
-                warningText.text = warning;
-                warningText.gameObject.SetActive(!string.IsNullOrEmpty(warning));
+                string w = "";
+                if (result.feedEmpty) w += "⚠️ Yemlik boş!\n";
+                if (result.waterEmpty) w += "⚠️ Suluk boş!\n";
+                warningText.text = w;
+                warningText.gameObject.SetActive(w.Length > 0);
             }
 
             welcomePopup.SetActive(true);
@@ -401,36 +452,55 @@ namespace MilkFarm
 
         private void LogWelcomeMessage(OfflineProgressResult result)
         {
-            Debug.Log("========================================");
-            Debug.Log("🎉 WELCOME BACK!");
+            Debug.Log("════════════════════════════════");
+            Debug.Log("🎉 HOŞ GELDİN!");
             Debug.Log($"⏰ {FormatDuration(result.deltaTime)}");
-            Debug.Log($"🥛 {result.totalMilkProduced} milk produced");
-            Debug.Log($"📦 {result.totalPackagesCreated} cases created");
-            if (result.feedEmpty) Debug.Log("⚠️ Feed trough empty!");
-            if (result.waterEmpty) Debug.Log("⚠️ Water trough empty!");
-            Debug.Log("========================================");
-        }
-
-        private void SaveCurrentTime()
-        {
-            var saveData = saveManager.GetCurrentSaveData();
-            saveData.lastPlayTime = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
-            saveManager.SaveGame(saveData);
+            Debug.Log($"🥛 {result.totalMilkProduced} süt");
+            Debug.Log($"📦 {result.totalPackagesCreated} kasa");
+            if (result.feedEmpty) Debug.Log("⚠️ Yemlik boş!");
+            if (result.waterEmpty) Debug.Log("⚠️ Suluk boş!");
+            Debug.Log("════════════════════════════════");
         }
 
         private string FormatDuration(float seconds)
         {
             if (seconds < 60) return $"{Mathf.FloorToInt(seconds)}s";
-            if (seconds < 3600) return $"{Mathf.FloorToInt(seconds / 60f)}m";
-            if (seconds < 86400) return $"{(seconds / 3600f):F1}h";
-            return $"{(seconds / 86400f):F1}d";
+            if (seconds < 3600) return $"{Mathf.FloorToInt(seconds / 60f)}dk";
+            if (seconds < 86400) return $"{(seconds / 3600f):F1}sa";
+            return $"{(seconds / 86400f):F1}gün";
         }
+
+        // ═══════════════════════════════════════
+        //  CONTEXT MENU DEBUG
+        // ═══════════════════════════════════════
 
         [ContextMenu("Debug: Simulate 1 Hour")]
         public void DebugSimulate1Hour()
         {
-            ProcessOfflineProgress(3600f, out var result);
+            var saveData = saveManager.GetCurrentSaveData();
+            LogSaveDataSnapshot("SİMÜLASYON ÖNCESİ", saveData);
+            var result = Process(saveData, 3600f);
+            LogSaveDataSnapshot("SİMÜLASYON SONRASI", saveData);
+            saveManager.SaveGame(saveData);
             LogWelcomeMessage(result);
+            ReloadAllManagers();
+        }
+
+        [ContextMenu("Debug: Simulate 8 Hours")]
+        public void DebugSimulate8Hours()
+        {
+            var saveData = saveManager.GetCurrentSaveData();
+            var result = Process(saveData, 28800f);
+            saveManager.SaveGame(saveData);
+            LogWelcomeMessage(result);
+            ReloadAllManagers();
+        }
+
+        [ContextMenu("Debug: Log Current SaveData")]
+        public void DebugLogSaveData()
+        {
+            var saveData = saveManager.GetCurrentSaveData();
+            LogSaveDataSnapshot("MEVCUT DURUM", saveData);
         }
 
         [ContextMenu("Debug: Reset Last Play Time")]
@@ -439,10 +509,13 @@ namespace MilkFarm
             var saveData = saveManager.GetCurrentSaveData();
             saveData.lastPlayTime = 0;
             saveManager.SaveGame(saveData);
-            Debug.Log("[OfflineProgress] Reset!");
+            Debug.Log("[Offline] lastPlayTime sıfırlandı");
         }
     }
 
+    /// <summary>
+    /// Offline sonuç (eski class adıyla backward compat)
+    /// </summary>
     public class OfflineProgressResult
     {
         public float deltaTime;

@@ -280,7 +280,7 @@ namespace MilkFarm
             wasDepleted = (currentFill <= 0f);
             UpdateVisuals();
 
-            Debug.Log($"[TroughController {stationIndex}] 📂 Loaded - Fill: {currentFill * 100:F0}%");
+           // Debug.Log($"[TroughController {stationIndex}] 📂 Loaded - Fill: {currentFill * 100:F0}%");
         }
     }
 }

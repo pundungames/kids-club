@@ -152,12 +152,12 @@ namespace MilkFarm
                     {
                         // Kaynak yok, pause durumunda başlat
                         isPaused = true;
-                        Debug.Log($"[CowController {cowIndex}] 📂 Loaded paused (no resource) - Timer: {savedTimer:F1}s");
+                        //  Debug.Log($"[CowController {cowIndex}] 📂 Loaded paused (no resource) - Timer: {savedTimer:F1}s");
                     }
                 }
             }
 
-            Debug.Log($"[CowController {cowIndex}] 📂 Restored - Milk: {milkStack}, Timer: {savedTimer:F1}s, Paused: {isPaused}");
+            //  Debug.Log($"[CowController {cowIndex}] 📂 Restored - Milk: {milkStack}, Timer: {savedTimer:F1}s, Paused: {isPaused}");
         }
 
         /// <summary>
@@ -297,11 +297,11 @@ namespace MilkFarm
                     break;
                 }
 
-                if (IsPackageManagerFull())
+              /*  if (IsPackageManagerFull())
                 {
                     Debug.Log($"[CowController {cowIndex}] Paketleme dolu");
                     break;
-                }
+                }*/
 
                 float productionTime = CalculateProductionTime();
 
@@ -360,10 +360,10 @@ namespace MilkFarm
                         }
                     }
 
-                    if (IsPackageManagerFull())
+                   /* if (IsPackageManagerFull())
                     {
                         break;
-                    }
+                    }*/
 
                     float speedMultiplier = isHolding && config != null
                         ? config.tapHoldSpeedMultiplier
@@ -379,10 +379,10 @@ namespace MilkFarm
                     yield return null;
                 }
 
-                if (IsPackageManagerFull())
+                /*if (IsPackageManagerFull())
                 {
                     break;
-                }
+                }*/
 
                 ProduceMilk();
             }

@@ -213,15 +213,15 @@ namespace MilkFarm
                 if (cowData != null && cowData.isUnlocked)
                 {
                     CloseLockButton(i); // Local slot: 0, 1, 2
-                    Debug.Log($"[AreaController] ✅ Cow {globalCowIndex} unlocked → Slot {i} + button closed");
+                   // Debug.Log($"[AreaController] ✅ Cow {globalCowIndex} unlocked → Slot {i} + button closed");
                 }
                 else
                 {
-                    Debug.Log($"[AreaController] Cow {globalCowIndex} LOCKED → Slot {i} + button OPEN");
+                  //  Debug.Log($"[AreaController] Cow {globalCowIndex} LOCKED → Slot {i} + button OPEN");
                 }
             }
 
-            Debug.Log($"[AreaController] ✅ Load complete!");
+          //  Debug.Log($"[AreaController] ✅ Load complete!");
         }
         // === DEBUG ===
 

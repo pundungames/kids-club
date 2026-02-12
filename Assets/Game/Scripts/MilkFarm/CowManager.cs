@@ -179,6 +179,7 @@ namespace MilkFarm
             if (cowPrefab == null || cowSlots[index] == null) return;
 
             GameObject cowObj = Instantiate(cowPrefab, cowSlots[index].position, cowSlots[index].rotation, cowSlots[index]);
+            Debug.LogError("cowSpawned");
             container.InjectGameObject(cowObj);
             cows[index].transform = cowObj.transform;
 
@@ -263,7 +264,7 @@ namespace MilkFarm
             }
         }
 
-      
+
         private void UpdateStationCowCounts()
         {
             // Her istasyon için aktif inek sayısını hesapla
@@ -515,10 +516,10 @@ namespace MilkFarm
             if (cow.isUnlocked) return false;
 
             int gemCost = GetCowPurchaseCost(globalIndex);
-            if (!iap.SpendGems(gemCost)) return false;
+            //if (!iap.SpendGems(gemCost)) return false;
 
             cow.isUnlocked = true;
-            iap.UnlockCow(globalIndex);
+          //  iap.UnlockCow(globalIndex);
             SpawnCow(globalIndex);
 
             MilkFarmEvents.CowUnlocked(globalIndex);
