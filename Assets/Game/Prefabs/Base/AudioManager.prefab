@@ -44,4 +44,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be99c67e8ee62f94ea7b2ff5088c852e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sounds: []
+  soundCategories:
+  - categoryName: Core
+    sounds:
+    - name: CoinTap
+      clip: {fileID: 8300000, guid: a508e5d8c88546944a3c7d31fd224803, type: 3}
+      mixerGroup: {fileID: 6590316593425708891, guid: aa4ec6a042a0b28409c5d8edb6029c83,
+        type: 2}
+      loop: 0
+      volume: 1
+      pitch: 1
+    - name: Sell
+      clip: {fileID: 8300000, guid: e394801fac7af9643ac4e468e44e05c7, type: 3}
+      mixerGroup: {fileID: 6590316593425708891, guid: aa4ec6a042a0b28409c5d8edb6029c83,
+        type: 2}
+      loop: 0
+      volume: 1
+      pitch: 1
+    - name: Tap
+      clip: {fileID: 8300000, guid: f354c54dc2579a245a5c6cf77f961358, type: 3}
+      mixerGroup: {fileID: 6590316593425708891, guid: aa4ec6a042a0b28409c5d8edb6029c83,
+        type: 2}
+      loop: 0
+      volume: 1
+      pitch: 1
+    - name: Unlock
+      clip: {fileID: 8300000, guid: 5a4b6ebcf7ecfcb4aa86b44b4028ca64, type: 3}
+      mixerGroup: {fileID: 6590316593425708891, guid: aa4ec6a042a0b28409c5d8edb6029c83,
+        type: 2}
+      loop: 0
+      volume: 1
+      pitch: 1
+    - name: Music
+      clip: {fileID: 8300000, guid: 543a238f28111c5469b0c82390a4d13b, type: 3}
+      mixerGroup: {fileID: 1143630238379237794, guid: aa4ec6a042a0b28409c5d8edb6029c83,
+        type: 2}
+      loop: 1
+      volume: 1
+      pitch: 1

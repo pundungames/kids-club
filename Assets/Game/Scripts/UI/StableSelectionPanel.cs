@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 using Zenject;
+using ChickenFarm;
 
 namespace MilkFarm
 {
@@ -10,13 +11,14 @@ namespace MilkFarm
     /// </summary>
     public class StableSelectionPanel : MonoBehaviour
     {
-        [Inject] private StableManager stableManager;
+        [SerializeField] StableManager stableManager;
         [Inject] private UIManager uiManager;
 
         [Header("UI References")]
         [SerializeField] private GameObject panel;
         [SerializeField] private Button closeButton;
         [SerializeField] private StableSlotUI[] stableSlots;
+        [SerializeField] bool isChicken;
 
         [Header("Panels")]
         [SerializeField] private StableInfoPanel stableInfoPanel;
@@ -81,7 +83,10 @@ namespace MilkFarm
 
         private void OnStableSlotClicked(int stableIndex)
         {
-            bool isUnlocked = stableManager.IsStableUnlocked(stableIndex);
+            bool isUnlocked = false;
+            if (isChicken)
+                isUnlocked = stableManager.IsChickenStableUnlocked(stableIndex);
+            else isUnlocked = stableManager.IsStableUnlocked(stableIndex);
 
             if (isUnlocked)
             {
@@ -94,7 +99,10 @@ namespace MilkFarm
         {
             if (uiManager != null)
             {
-                uiManager.OpenAreaPurchasePanel(stableIndex);
+                if (isChicken)
+                    uiManager.OpenChickenAreaPurchasePanel(stableIndex);
+                else
+                    uiManager.OpenAreaPurchasePanel(stableIndex);
             }
         }
     }

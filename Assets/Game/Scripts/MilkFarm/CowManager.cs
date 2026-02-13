@@ -38,7 +38,7 @@ namespace MilkFarm
     /// Tüm inekleri yöneten merkezi manager
     /// Mevcut CowController sistemi ile entegre edildi
     /// </summary>
-    public class CowManager : MonoBehaviour
+    public class CowManager : MonoBehaviour, IAnimalManager
     {
         [Inject] DiContainer container;
         [Inject] private GameConfig config;
@@ -537,5 +537,47 @@ namespace MilkFarm
             if (globalIndex < 9) return 200;  // Cow 6-8: 200 gems
             return 300;                       // Cow 9-11: 300 gems
         }
+        public List<AnimalData> GetAllAnimals()
+        {
+            var animals = new List<AnimalData>();
+            foreach (var cow in cows)
+            {
+                var data = new AnimalData(cow.index);
+                data.isUnlocked = cow.isUnlocked;
+                data.level = cow.level;
+                data.currentProduct = cow.currentMilk;
+                data.productionTimer = cow.productionTimer;
+                animals.Add(data);
+            }
+            return animals;
+        }
+
+        public AnimalData GetAnimal(int index)
+        {
+            var cow = GetCow(index);
+            if (cow == null) return null;
+
+            var data = new AnimalData(cow.index);
+            data.isUnlocked = cow.isUnlocked;
+            data.level = cow.level;
+            data.currentProduct = cow.currentMilk;
+            data.productionTimer = cow.productionTimer;
+            return data;
+        }
+
+        public void SpawnAnimal(int index) => SpawnCow(index);
+        public void UnlockAndSpawnAnimal(int index) => UnlockAndSpawnCow(index);
+        public void MarkAnimalAsUnlocked(int index, bool unlocked = true) => MarkCowAsUnlocked(index, unlocked);
+
+        public bool UpgradeAnimal(int globalIndex, IAPManager iapMgr) => UpgradeCow(globalIndex, iapMgr);
+
+        public float GetAnimalProductionTime(int level) => GetProductionTime(level);
+        public Sprite GetAnimalSprite(int level) => GetCowSprite(level);
+        public float CalculateUpgradeCost(int currentLevel) => CalculateCowUpgradeCost(currentLevel);
+        public int GetPurchaseCost(int globalIndex) => GetCowPurchaseCost(globalIndex);
+        public void CollectFromAnimal(int index) => CollectMilkFromCow(index);
+
+        Sprite IAnimalManager.GetAnimalSprite(int level) => GetCowSprite(level);
+        float IAnimalManager.GetProductionTime(int level) => GetProductionTime(level);
     }
 }

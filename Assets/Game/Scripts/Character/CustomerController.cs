@@ -23,6 +23,8 @@ public class CustomerController : MonoBehaviour
     [Header("UI")]
     [SerializeField] private GameObject packageTextParent;
     [SerializeField] private TextMeshProUGUI packageCountText;
+    [SerializeField] private GameObject milkImage;
+    [SerializeField] private GameObject eggImage;
 
     private Transform exitPoint;
     private Vector3 currentTargetPos;
@@ -49,7 +51,7 @@ public class CustomerController : MonoBehaviour
         }
     }
 
-    public void Initialize(Transform exit, Gender genderPref, SkinType skinPref)
+    public void Initialize(Transform exit, Gender genderPref, SkinType skinPref, bool isEgg)
     {
         exitPoint = exit;
         if (appearanceManager != null) appearanceManager.BuildCharacter(genderPref, skinPref);
@@ -72,6 +74,8 @@ public class CustomerController : MonoBehaviour
         {
             Debug.LogError("[CustomerController] CustomerManager inject edilmedi!");
         }
+        if (isEgg) eggImage.SetActive(true);
+        else milkImage.SetActive(true);
     }
 
     /// <summary>

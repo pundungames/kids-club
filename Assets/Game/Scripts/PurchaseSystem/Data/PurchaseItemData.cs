@@ -17,7 +17,9 @@ namespace MilkFarm
         UnlockArea,      // Yeni area açma
         UnlockTrough,    // Yemlik/suluk açma
         UnlockSlot,      // İnek slotu açma
-        UnlockCow        // İnek satın alma
+        UnlockCow,        // İnek satın alma
+        UnlockChickenArea,
+        UnlockChicken
     }
 
     [CreateAssetMenu(fileName = "NewPurchaseItem", menuName = "MilkFarm/IAP/Purchase Item Data")]

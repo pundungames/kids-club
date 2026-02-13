@@ -12,7 +12,7 @@ namespace MilkFarm
     public class StableInfoPanel : MonoBehaviour
     {
         [Inject] private StableManager stableManager;
-        [Inject] private CowManager cowManager;
+        [Inject] private IAnimalManager animalManager;
         [Inject] private IAPManager iapManager; // ✅ Changed from MoneyManager
         [Inject] private UIManager uiManager;
 
@@ -21,6 +21,7 @@ namespace MilkFarm
         [SerializeField] private Button closeButton;
         [SerializeField] private Image stableImage;
         [SerializeField] private TextMeshProUGUI capacityText;
+        [SerializeField] bool isChicken;
 
         [Header("Cow List")]
         [SerializeField] private Transform cowListContent;
@@ -47,7 +48,7 @@ namespace MilkFarm
             if (closeButton != null)
                 closeButton.onClick.AddListener(Close);
 
-           // Close();
+            // Close();
         }
 
         public void Open(int stableIndex)
@@ -77,20 +78,14 @@ namespace MilkFarm
         private void RefreshCowList()
         {
             if (currentStableIndex < 0) return;
-
-            // Clear existing rows
-            foreach (var row in cowRows)
-                if (row != null) Destroy(row.gameObject);
+            foreach (var row in cowRows) if (row != null) Destroy(row.gameObject);
             cowRows.Clear();
 
-            // Get cows in this stable
-            var cows = stableManager.GetCowsInStable(currentStableIndex);
-
-            // Spawn rows
-            foreach (var cow in cows)
+            var animals = stableManager.GetAnimalsInStable(currentStableIndex);
+            foreach (var animal in animals)
             {
                 CowRowUI row = Instantiate(cowRowPrefab, cowListContent);
-                row.Setup(cow, cowManager, iapManager);
+                row.Setup(animal, animalManager, iapManager);  // ✅ AnimalData + IAnimalManager
                 row.onCowChanged += RefreshCowList;
                 row.onPurchaseClicked += OnCowPurchaseButtonClicked;
                 cowRows.Add(row);
@@ -124,7 +119,10 @@ namespace MilkFarm
         {
             if (uiManager != null)
             {
-                uiManager.OpenCowPurchasePanel(cowIndex);
+                if (isChicken)
+                    uiManager.OpenChickenPurchasePanel(cowIndex);
+                else
+                    uiManager.OpenCowPurchasePanel(cowIndex);
             }
         }
     }

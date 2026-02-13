@@ -11,7 +11,7 @@ namespace MilkFarm
     public class MoneySlotClicker : MonoBehaviour
     {
         [Inject] private MoneyManager moneyManager;
-
+        [Inject] AudioManager audioManager;
         [Header("Visual Feedback")]
         [SerializeField] private GameObject clickEffect;
         [SerializeField] ParticleImage coinAttraction;
@@ -31,6 +31,7 @@ namespace MilkFarm
             {
                 if (moneyManager.HasCoins())
                 {
+                    audioManager.Play("CoinTap");
                     moneyManager.CollectCoins();
                     if (coinAttraction) coinAttraction.Play();
                     if (clickEffect != null)

@@ -14,6 +14,8 @@ public class CustomerSpawner : MonoBehaviour
     public GameObject customerPrefab;
     public Transform spawnPoint;
     public Transform exitPoint;
+    public bool isEgg;
+
 
     [Header("Özellikler")]
     public Gender spawnGender = Gender.Both;
@@ -68,7 +70,7 @@ public class CustomerSpawner : MonoBehaviour
                 : spawnSkin;
 
             // Initialize - artýk counterTransform gerekmiyor!
-            ctrl.Initialize(exitPoint, gender, skin);
+            ctrl.Initialize(exitPoint, gender, skin, isEgg);
 
             Debug.Log($"[CustomerSpawner] Müþteri spawn edildi (Zenject).");
         }

@@ -17,7 +17,7 @@ namespace MilkFarm
         [SerializeField] private Button button;
 
         [Inject] private UIManager uiManager;
-
+        [Inject] AudioManager audioManager;
         private bool isProcessing = false; // Çift tıklama önleme
 
         private void Awake()
@@ -41,6 +41,7 @@ namespace MilkFarm
 
         private void OnLockClicked()
         {
+            audioManager.Play("Tap");
             // Çift tıklama önleme
             if (isProcessing)
             {
@@ -77,6 +78,15 @@ namespace MilkFarm
                     uiManager.OpenTroughPurchasePanel(targetIndex);
                     break;
 
+                case PurchaseType.UnlockChicken:
+                    Debug.Log($"[LockButton] Opening Chicken panel for index {targetIndex}");
+                    uiManager.OpenChickenPurchasePanel(targetIndex);
+                    break;
+
+                case PurchaseType.UnlockChickenArea:
+                    Debug.Log($"[LockButton] Opening Chicken Area panel for index {targetIndex}");
+                    uiManager.OpenChickenAreaPurchasePanel(targetIndex);
+                    break;
                 default:
                     Debug.LogWarning($"[LockButton] Unknown unlock type: {unlockType}");
                     break;

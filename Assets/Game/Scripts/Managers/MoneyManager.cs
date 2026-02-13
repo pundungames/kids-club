@@ -71,14 +71,14 @@ namespace MilkFarm
 
             basePosition = coinSpawnPoint.position;
 
-            Vector3 posX = new Vector3(-0.956f, 0.196f, -2.335f);
-            Vector3 posZ = new Vector3(-1.206f, 0.196f, -2.585f);
-            Vector3 posY = new Vector3(-1.206f, 0.268f, -2.335f);
+            // SpawnPoint’in kendi yönleri (local axis)
+            xDirection = coinSpawnPoint.right * coinSpacingX;
+            zDirection = coinSpawnPoint.forward * coinSpacingZ;
+            yDirection = coinSpawnPoint.up * coinSpacingY;
 
-            xDirection = posX - basePosition;
-            zDirection = posZ - basePosition;
-            yDirection = posY - basePosition;
+            Debug.Log("[MoneyManager] Grid directions calculated dynamically!");
         }
+
 
         private void LoadMoney()
         {

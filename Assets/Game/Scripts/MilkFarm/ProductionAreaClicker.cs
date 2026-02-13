@@ -1,5 +1,6 @@
 using UnityEngine;
 using MilkFarm;
+using Zenject;
 
 /// <summary>
 /// Production area'ya týklama handler
@@ -9,11 +10,13 @@ public class ProductionAreaClicker : MonoBehaviour
 {
     [Header("Manager Referansý")]
     [SerializeField] private PackageManager packageManager;
-
+    [Inject] AudioManager audioManager;
     void OnMouseDown()
     {
         if (packageManager != null)
         {
+            audioManager.Play("Tap");
+
             Debug.Log("[ProductionAreaClicker] Production area'ya týklandý!");
             packageManager.OnProductionAreaClicked();
         }

@@ -3,6 +3,7 @@ using Zenject;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Dreamteck.Splines;
 
 namespace MilkFarm
 {
@@ -11,6 +12,7 @@ namespace MilkFarm
         [Inject] private GameConfig config;
         [Inject] private SaveManager saveManager;
         [Inject] private MoneyManager moneyManager;
+        [Inject] DiContainer container;
 
         [Header("Referanslar")]
         [SerializeField] private CustomerManager customerManager;
@@ -19,6 +21,7 @@ namespace MilkFarm
         [SerializeField] private Transform caseSpawnPoint;
         [SerializeField] private GameObject cratePrefab;
         [SerializeField] private GameObject milkBottlePrefab;
+        [SerializeField] float crateScale = 1f;
         [SerializeField] private Vector3 gridOffset = new Vector3(-0.434f, 0.309f, -0.315f);
         [SerializeField] private int maxProductionStack = 8;
         [SerializeField] private GameObject productionFullIcon;
@@ -27,9 +30,9 @@ namespace MilkFarm
         [SerializeField] private Transform[] salesSlots;
         [SerializeField] private GameObject salesFullIcon;
 
-        private List<MilkCrate> productionStack = new List<MilkCrate>();
-        private MilkCrate currentActiveCrate;
-        private MilkCrate[] salesSlotsContents;
+        private List<ProductCrate> productionStack = new List<ProductCrate>();
+        private ProductCrate currentActiveCrate;
+        private ProductCrate[] salesSlotsContents;
 
         private int capacityLevel = 1;
         private int currentCapacity;
@@ -41,7 +44,7 @@ namespace MilkFarm
         {
             if (salesSlots != null)
             {
-                salesSlotsContents = new MilkCrate[salesSlots.Length];
+                salesSlotsContents = new ProductCrate[salesSlots.Length];
             }
         }
 
@@ -203,12 +206,13 @@ namespace MilkFarm
             Vector3 spawnPos = GetStackPosition(spawnIndex);
 
             GameObject newCrateObj = Instantiate(cratePrefab, spawnPos, caseSpawnPoint.rotation);
-            MilkCrate crate = newCrateObj.GetComponent<MilkCrate>();
+            container.InjectGameObject(newCrateObj);
+            ProductCrate crate = newCrateObj.GetComponent<ProductCrate>();
 
             if (crate != null)
             {
                 newCrateObj.transform.SetParent(caseSpawnPoint);
-                newCrateObj.transform.localScale = Vector3.one * 1.0f;
+                newCrateObj.transform.localScale = Vector3.one * crateScale;
 
                 // ✅ Bottle'ları instant spawn (AddBottleInstant kullan)
                 for (int i = 0; i < bottleCount; i++)
@@ -237,7 +241,8 @@ namespace MilkFarm
             Transform slot = salesSlots[slotIndex];
 
             GameObject crateObj = Instantiate(cratePrefab, slot.position, slot.rotation);
-            MilkCrate crate = crateObj.GetComponent<MilkCrate>();
+            container.InjectGameObject(crateObj);
+            ProductCrate crate = crateObj.GetComponent<ProductCrate>();
 
             if (crate != null)
             {
@@ -273,12 +278,13 @@ namespace MilkFarm
             Vector3 spawnPos = GetStackPosition(spawnIndex);
 
             GameObject newCrateObj = Instantiate(cratePrefab, spawnPos, caseSpawnPoint.rotation);
-            currentActiveCrate = newCrateObj.GetComponent<MilkCrate>();
+            container.InjectGameObject(newCrateObj);
+            currentActiveCrate = newCrateObj.GetComponent<ProductCrate>();
 
             if (currentActiveCrate != null)
             {
                 newCrateObj.transform.SetParent(caseSpawnPoint);
-                newCrateObj.transform.localScale = Vector3.one * 1.0f;
+                newCrateObj.transform.localScale = Vector3.one * crateScale;
             }
 
             Debug.Log($"[PackageManager] Case spawn. Index: {spawnIndex}, Stack: {productionStack.Count}");
@@ -295,20 +301,20 @@ namespace MilkFarm
             }
         }
 
-        public void AddMilk(Vector3 milkStartPos)
+        public void AddMilk(Vector3 milkStartPos, SplineComputer spline = null, float cooldown = 200f)
         {
             milkQueue.Enqueue(milkStartPos);
 
             if (!isAddingMilk)
             {
-                StartCoroutine(ProcessMilkQueue());
+                StartCoroutine(ProcessMilkQueue(spline, cooldown));
             }
         }
 
         /// <summary>
         /// Süt queue'sunu işle (DÜZELTME)
         /// </summary>
-        private IEnumerator ProcessMilkQueue()
+        private IEnumerator ProcessMilkQueue(SplineComputer spline = null, float cooldown = 200f)
         {
             isAddingMilk = true;
 
@@ -326,7 +332,7 @@ namespace MilkFarm
                         UpdateProductionFullIcon();
 
                         // Queue'da bekle (skip etme!)
-                        yield return new WaitForSeconds(0.5f);
+                        yield return new WaitForSeconds(.5f);
                         continue;
                     }
 
@@ -347,13 +353,13 @@ namespace MilkFarm
                 int safetyCounter = 0;
                 while (currentActiveCrate != null &&
                        currentActiveCrate.targetMilkCount > currentActiveCrate.landedMilkCount &&
-                       safetyCounter < 200)
+                       safetyCounter < cooldown)
                 {
                     yield return null;
                     safetyCounter++;
                 }
 
-                if (safetyCounter >= 200)
+                if (safetyCounter >= cooldown)
                 {
                     Debug.LogWarning("[PackageManager] Pending milk TIMEOUT!");
                 }
@@ -378,7 +384,7 @@ namespace MilkFarm
                 {
                     Vector3 milkPos = milkQueue.Dequeue();
 
-                    currentActiveCrate.AddMilkToCrate(milkBottlePrefab, milkPos, null);
+                    currentActiveCrate.AddMilkToCrate(milkBottlePrefab, milkPos, null, spline);
                     MilkFarmEvents.MilkAddedToStation(0);
 
                     Debug.Log($"[PackageManager] Şişe eklendi. Case: {currentActiveCrate.landedMilkCount}/6, Queue: {milkQueue.Count}");
@@ -408,7 +414,7 @@ namespace MilkFarm
 
             currentActiveCrate.transform.SetParent(caseSpawnPoint);
             currentActiveCrate.transform.position = stackPos;
-            currentActiveCrate.transform.localScale = Vector3.one * 1.0f;
+            currentActiveCrate.transform.localScale = Vector3.one * crateScale;
 
             Debug.Log($"[PackageManager] Case completed. Stack: {productionStack.Count}/{maxProductionStack}, Pos: {stackPos}");
 
@@ -465,7 +471,7 @@ namespace MilkFarm
         {
             if (currentActiveCrate == null) return;
 
-            MilkCrate crateToMove = currentActiveCrate;
+            ProductCrate crateToMove = currentActiveCrate;
             currentActiveCrate = null;
 
             int emptySlotIndex = GetEmptySalesSlot();
@@ -488,7 +494,7 @@ namespace MilkFarm
         {
             if (productionStack.Count == 0) return;
 
-            MilkCrate crateToMove = productionStack[0];
+            ProductCrate crateToMove = productionStack[0];
             productionStack.RemoveAt(0);
 
             UpdateStackPositions();
@@ -520,7 +526,7 @@ namespace MilkFarm
             return -1;
         }
 
-        private void MoveCrateToSalesSlot(MilkCrate crate, int slotIndex)
+        private void MoveCrateToSalesSlot(ProductCrate crate, int slotIndex)
         {
             Transform targetSlot = salesSlots[slotIndex];
             salesSlotsContents[slotIndex] = crate;
@@ -610,7 +616,7 @@ namespace MilkFarm
 
             for (int i = 0; i < salesSlotsContents.Length && given < needed; i++)
             {
-                MilkCrate crate = salesSlotsContents[i];
+                ProductCrate crate = salesSlotsContents[i];
                 if (crate == null) continue;
 
                 while (crate.CurrentBottleCount > 0 && given < needed)

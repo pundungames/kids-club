@@ -1,3 +1,4 @@
+using ChickenFarm;
 using UnityEngine;
 using Zenject;
 
@@ -24,7 +25,6 @@ namespace MilkFarm
             Container.Bind<SaveManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<IAPManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<MoneyManager>().FromComponentInHierarchy().AsSingle().NonLazy();
-            Container.Bind<CowManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<StationManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<PackageManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<CustomerManager>().FromComponentInHierarchy().AsSingle().NonLazy();
@@ -32,6 +32,11 @@ namespace MilkFarm
             Container.Bind<AutoWorkerManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             Container.Bind<StableManager>().FromComponentInHierarchy().AsSingle().NonLazy();
             //Container.Bind<UpgradeManager>().FromComponentInHierarchy().AsSingle().NonLazy();
+
+            Container.BindInterfacesAndSelfTo<CowManager>()
+               .FromComponentInHierarchy()
+               .AsSingle()
+               .NonLazy();
 
             Debug.Log("[MilkFarmInstaller] Tüm bağımlılıklar başarıyla inject edildi!");
         }

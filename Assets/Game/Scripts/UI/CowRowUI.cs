@@ -21,8 +21,8 @@ namespace MilkFarm
         [SerializeField] private Button plusButton;
         [SerializeField] private GameObject[] purchasedOpenObjects;
 
-        private Cow cow;
-        private CowManager cowManager;
+        private AnimalData animal;
+        private IAnimalManager animalManager;
         private IAPManager iapManager;
 
         [Inject] private GameConfig config; // ✅ Just GameConfig!
@@ -30,10 +30,10 @@ namespace MilkFarm
         public System.Action onCowChanged;
         public System.Action<int> onPurchaseClicked;
 
-        public void Setup(Cow cowData, CowManager manager, IAPManager iap)
+        public void Setup(AnimalData animalData, IAnimalManager manager, IAPManager iap)
         {
-            cow = cowData;
-            cowManager = manager;
+            animal = animalData;
+            animalManager = manager;
             iapManager = iap;
 
             if (upgradeButton != null)
@@ -43,84 +43,71 @@ namespace MilkFarm
             }
 
             if (plusButton != null)
-                plusButton.onClick.AddListener(() => onPurchaseClicked?.Invoke(cow.index));
+                plusButton.onClick.AddListener(() => onPurchaseClicked?.Invoke(animal.index));
 
             Refresh();
         }
 
         private void Refresh()
         {
-            if (cow == null) return;
+            if (animal == null) return;
 
-            // Cow icon (from GameConfig)
+            // Icon
             if (cowIcon != null)
             {
-                Sprite sprite = cowManager.GetCowSprite(cow.level);
+                Sprite sprite = animalManager.GetAnimalSprite(animal.level);
                 if (sprite != null) cowIcon.sprite = sprite;
-                cowIcon.color = cow.isUnlocked ? Color.white : Color.gray;
+                cowIcon.color = animal.isUnlocked ? Color.white : new Color(0.3f, 0.3f, 0.3f, 1f);
             }
-
-            // Lock icon
-            if (lockIcon != null)
-                lockIcon.SetActive(!cow.isUnlocked);
-
-            // + button
-            if (plusButton != null)
-                plusButton.gameObject.SetActive(!cow.isUnlocked);
 
             // Level text
             if (levelText != null)
-            {
-                levelText.text = $"Lv {cow.level}";
-                levelText.gameObject.SetActive(cow.isUnlocked);
-            }
+                levelText.text = animal.isUnlocked ? $"Lv {animal.level}" : "Locked";
 
-            // ✅ Production time (from GameConfig)
+            // Production time
             if (productionTimeText != null)
             {
-                if (cow.isUnlocked && config != null)
-                {
-                    float time = config.GetProductionTime(cow.level);
-                    productionTimeText.text = $"{time:F0}s";
-                    productionTimeText.gameObject.SetActive(true);
-                }
-                else
-                {
-                    productionTimeText.gameObject.SetActive(false);
-                }
+                float pt = animalManager.GetProductionTime(animal.level);
+                productionTimeText.text = $"{pt:F0}s";
             }
 
-            if (cow.isUnlocked)
+            // Lock icon
+            if (lockIcon != null) lockIcon.SetActive(!animal.isUnlocked);
+
+            // Upgrade button
+            if (animal.isUnlocked && animal.level < 3)
             {
-                bool isMaxLevel = cow.level >= 3;
-
-                if (upgradeButton != null) upgradeButton.gameObject.SetActive(!isMaxLevel);
-                if (maxText != null) maxText.gameObject.SetActive(isMaxLevel);
-
-                if (!isMaxLevel && upgradeCostText != null)
-                {
-                    int gemCost = cowManager.GetUpgradeCostGems(cow.level);
-                    upgradeCostText.text = $"{gemCost} 💎";
-                }
-
-                foreach (var item in purchasedOpenObjects)
-                    item.SetActive(true);
+                if (upgradeButton != null) upgradeButton.gameObject.SetActive(true);
+                if (maxText != null) maxText.SetActive(false);
+                int cost = animalManager.GetUpgradeCostGems(animal.level);
+                if (upgradeCostText != null) upgradeCostText.text = $"{cost}";
+            }
+            else if (animal.isUnlocked && animal.level >= 3)
+            {
+                if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
+                if (maxText != null) maxText.SetActive(true);
             }
             else
             {
                 if (upgradeButton != null) upgradeButton.gameObject.SetActive(false);
-                if (maxText != null) maxText.gameObject.SetActive(false);
-
-                foreach (var item in purchasedOpenObjects)
-                    item.SetActive(false);
+                if (maxText != null) maxText.SetActive(false);
             }
-        }
 
+            // Plus button (purchase)
+            if (plusButton != null) plusButton.gameObject.SetActive(!animal.isUnlocked);
+
+            // Purchased objects
+            if (purchasedOpenObjects != null)
+                foreach (var obj in purchasedOpenObjects)
+                    if (obj != null) obj.SetActive(animal.isUnlocked);
+        }
         private void OnUpgradeClicked()
         {
-            if (cowManager.UpgradeCow(cow.index, iapManager))
+            if (animal == null || !animal.isUnlocked) return;
+            if (animalManager.UpgradeAnimal(animal.index, iapManager))
             {
-                Refresh(); // ✅ Updates production time automatically
+                animal.level++; // local data güncelle
+                Refresh();
                 onCowChanged?.Invoke();
             }
         }

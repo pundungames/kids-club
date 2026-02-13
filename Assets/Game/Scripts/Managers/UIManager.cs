@@ -14,7 +14,11 @@ namespace MilkFarm
 
         [Header("ScriptableObject References")]
         [SerializeField] private PurchaseItemData[] cowPurchaseData;     // 12 cow unlock data
+        [SerializeField] private PurchaseItemData[] chickenPurchaseData;     // 12 cow unlock data
+
         [SerializeField] private PurchaseItemData[] areaPurchaseData;    // 4 stable unlock data
+        [SerializeField] private PurchaseItemData[] chickenAreaPurchaseData;    // 4 stable unlock data
+
         [SerializeField] private PurchaseItemData[] troughPurchaseData;  // Trough unlock data
         [SerializeField] private PurchaseItemData[] slotPurchaseData;    // Slot unlock data
 
@@ -47,7 +51,40 @@ namespace MilkFarm
 
             OpenPurchasePanel(data);
         }
+        public void OpenChickenPurchasePanel(int cowIndex)
+        {
+            if (chickenPurchaseData == null || cowIndex >= chickenPurchaseData.Length)
+            {
+                Debug.LogError($"[UIManager] Cow data yok! Index: {cowIndex}");
+                return;
+            }
 
+            PurchaseItemData data = chickenPurchaseData[cowIndex];
+            if (data == null)
+            {
+                Debug.LogError($"[UIManager] Cow data null! Index: {cowIndex}");
+                return;
+            }
+
+            OpenPurchasePanel(data);
+        }
+        public void OpenChickenAreaPurchasePanel(int areaIndex)
+        {
+            if (chickenAreaPurchaseData == null || areaIndex >= chickenAreaPurchaseData.Length)
+            {
+                Debug.LogError($"[UIManager] Area data yok! Index: {areaIndex}");
+                return;
+            }
+
+            PurchaseItemData data = chickenAreaPurchaseData[areaIndex];
+            if (data == null)
+            {
+                Debug.LogError($"[UIManager] Area data null! Index: {areaIndex}");
+                return;
+            }
+
+            OpenPurchasePanel(data);
+        }
         /// <summary>
         /// Area unlock panelini aç
         /// </summary>

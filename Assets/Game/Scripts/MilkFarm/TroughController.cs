@@ -11,6 +11,7 @@ namespace MilkFarm
     /// </summary>
     public class TroughController : MonoBehaviour
     {
+        [Inject] AudioManager audioManager;
         [Header("Görsel Ayarlar")]
         [SerializeField] private Transform fillMesh;
         [SerializeField] private float loweredYOffset = -0.5f;
@@ -129,6 +130,7 @@ namespace MilkFarm
 
         void OnMouseDown()
         {
+            audioManager.Play("Tap");
             FillTrough();
         }
 

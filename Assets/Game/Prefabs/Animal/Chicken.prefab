@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 3415568119894414822}
   - component: {fileID: 6924737835416438390}
   - component: {fileID: 9172916490807049094}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Shoe2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -92,7 +92,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6537431339695958187}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_index.001.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -124,7 +124,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7136288780530617226}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: beak_001.B
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -155,7 +155,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4763134607279644166}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: LV1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -189,7 +189,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7190275584847002651}
   - component: {fileID: 2904063226027412431}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ChickenBody2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -319,7 +319,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3825876185555429621}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: LV3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -354,7 +354,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6339810781124827813}
   - component: {fileID: 4580492433986035150}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ChickenBody
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -484,7 +484,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3994086849599458767}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_index.002.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -591,7 +591,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8887931347432742755}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: toes_parent.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -624,7 +624,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6615828273154833704}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wing.002.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -655,7 +655,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1708851312434663585}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Chicken
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -687,7 +687,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1043451475955719258}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_ring.003.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -718,7 +718,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3085371540301018714}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_thumb.001.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -750,7 +750,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6575636808392007490}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_ring.002.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -782,7 +782,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8759574328494956372}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: foot.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -806,81 +806,6 @@ Transform:
   - {fileID: 3310459260276385287}
   m_Father: {fileID: 9080390274258660180}
   m_LocalEulerAnglesHint: {x: -39.56039, y: -6.695285, z: 6.959657}
---- !u!1 &2483067511021713783
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4426931310489419098}
-  - component: {fileID: 7041818288778319277}
-  - component: {fileID: 7647557874039052589}
-  m_Layer: 8
-  m_Name: Image
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &4426931310489419098
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2483067511021713783}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 7027546678686820254}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 1, y: 1}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -0.055, y: -0.044}
-  m_SizeDelta: {x: 0.0445, y: 0.0445}
-  m_Pivot: {x: 1, y: 1}
---- !u!222 &7041818288778319277
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2483067511021713783}
-  m_CullTransparentMesh: 1
---- !u!114 &7647557874039052589
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2483067511021713783}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 3d77d93b0d94643f8bb116f4c5eee907, type: 3}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &2573204275921776096
 GameObject:
   m_ObjectHideFlags: 0
@@ -890,7 +815,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5363876971481663457}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: pelvis.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -921,7 +846,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6710206051583162372}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: eye.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -952,7 +877,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7111150116622532716}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spine.004
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -988,7 +913,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2348196570050575972}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: n_feather.001.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1019,7 +944,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5544948108205873255}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_index.002.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1051,7 +976,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9080390274258660180}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: shin.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1083,7 +1008,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3361600351544303686}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: beak.001.T
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1115,7 +1040,7 @@ GameObject:
   m_Component:
   - component: {fileID: 781560466189347872}
   - component: {fileID: 2464149950609684264}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ChickenBody3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1245,7 +1170,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1334727020384304942}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wing.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1279,7 +1204,7 @@ GameObject:
   - component: {fileID: 8601718192684865384}
   - component: {fileID: 1010267172764509331}
   - component: {fileID: 3109863391078773437}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Shoe3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1377,7 +1302,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3363238891221025667}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0.0067}
+  m_LocalPosition: {x: 0, y: 0, z: 0.006699994}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1385,7 +1310,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -0.0549, y: 0.0526}
+  m_AnchoredPosition: {x: 0.000000011175871, y: 0}
   m_SizeDelta: {x: 0.0421, y: 0.04604}
   m_Pivot: {x: 1, y: 0}
 --- !u!222 &4555567792697946810
@@ -1570,7 +1495,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9089442027989319066}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_index.001.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1602,7 +1527,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 299573574611983552}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: pelvis.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1634,7 +1559,9 @@ GameObject:
   m_Component:
   - component: {fileID: 4061686622414271229}
   - component: {fileID: 1205096010395459881}
-  m_Layer: 0
+  - component: {fileID: 8683571525949715344}
+  - component: {fileID: 2765378606042749272}
+  m_Layer: 8
   m_Name: Chicken
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1683,6 +1610,50 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &8683571525949715344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3681080104311924807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 413ea51d02daa5343888b37f7069e73b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  progressBar: {fileID: 5420580737290111237}
+  timerCanvas: {fileID: 0}
+  eggIndicator: {fileID: 5346051218017073627}
+  eggCountText: {fileID: 6686925460997379849}
+  needsIndicator: {fileID: 998915869984433469}
+  spline: {fileID: 0}
+  levelModels:
+  - {fileID: 419430332556459797}
+  - {fileID: 8750390074903874758}
+  - {fileID: 634413098932295545}
+  maxEggStack: 4
+--- !u!65 &2765378606042749272
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3681080104311924807}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.1, y: 0.12892751, z: 0.1}
+  m_Center: {x: -0, y: 0.08446374, z: -0}
 --- !u!1 &4044440901512503250
 GameObject:
   m_ObjectHideFlags: 0
@@ -1692,7 +1663,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 153791261173678377}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_thumb.002.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1724,7 +1695,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9122728533384703180}
   - component: {fileID: 5898287805052046218}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ChickenLeg
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1854,7 +1825,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6829012325975486934}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spine.003
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1887,7 +1858,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6661723986248144567}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: shoulder.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1921,7 +1892,7 @@ GameObject:
   - component: {fileID: 5952064105513988222}
   - component: {fileID: 3397529957704978810}
   - component: {fileID: 8762099160903806285}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2002,7 +1973,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8604263398448946423}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_index.003.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2033,7 +2004,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8991468126246592488}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: shin.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2065,7 +2036,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5450396291226873673}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: eye.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2114,18 +2085,17 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5346051218017073627}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7092039454275267221}
-  - {fileID: 4426931310489419098}
   m_Father: {fileID: 2996594870580532371}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0.1919, y: 0.1919}
+  m_AnchoredPosition: {x: 0.0028, y: -0.0163}
+  m_SizeDelta: {x: 0.10073, y: 0.10073}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5480177068894700857
 CanvasRenderer:
@@ -2155,7 +2125,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: feb65b961d31e794fb44a31297ea6cf6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 7193822e3e37b07498db8ed2be0511e2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2172,7 +2142,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5346051218017073627}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6835fe394d010ca489d0529d0f71b721, type: 3}
   m_Name: 
@@ -2186,7 +2156,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3082890253548142528}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: shoulder.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2218,7 +2188,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2887764265499672410}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: head
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2255,7 +2225,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6166501888123668933}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_thumb.002.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2286,7 +2256,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7160921244058110030}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: foot.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2319,7 +2289,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6991000508953371899}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spine.006
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2351,7 +2321,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8687617285356168450}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_thumb.001.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2383,7 +2353,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7896350662889181022}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_ring.003.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2520,7 +2490,7 @@ GameObject:
   - component: {fileID: 1711322593245243206}
   - component: {fileID: 1819882501919630893}
   - component: {fileID: 5040866986910832971}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Kolye
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2676,7 +2646,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6631310263726252500}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6835fe394d010ca489d0529d0f71b721, type: 3}
   m_Name: 
@@ -2690,7 +2660,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9163823360203952452}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spine.005
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2724,7 +2694,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8101759879989093371}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_ring.002.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2756,7 +2726,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3693475199193757680}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spine.001
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2788,7 +2758,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8470816446823805094}
   - component: {fileID: 6169208464550523285}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: ChickenEye
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2918,7 +2888,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6342872319790123009}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wing.001.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2950,7 +2920,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6355260165796339003}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: spine.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2982,7 +2952,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1314101870811726148}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wing.001.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3014,7 +2984,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9214446640880785287}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_ring.001.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3046,7 +3016,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6239036879017746127}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wing.002.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3077,7 +3047,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 227727660385579800}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Wing.R
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3109,7 +3079,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9003036296450777813}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_index.003.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3140,7 +3110,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5645892619288280911}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: LV2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3173,7 +3143,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3310459260276385287}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: toes_parent.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3206,7 +3176,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1473977439461129898}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: neck.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3287,7 +3257,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4081334788324270380}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: neck.001
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3319,7 +3289,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5782198679338664887}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: t_ring.001.L
   m_TagString: Untagged
   m_Icon: {fileID: 0}

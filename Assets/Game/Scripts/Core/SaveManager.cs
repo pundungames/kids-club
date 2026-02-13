@@ -18,7 +18,6 @@ namespace MilkFarm
 
         private void Awake()
         {
-            DontDestroyOnLoad(gameObject);
         }
 
         /// <summary>

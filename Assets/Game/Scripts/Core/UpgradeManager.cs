@@ -10,9 +10,10 @@ namespace MilkFarm
     /// </summary>
     public class UpgradeManager : MonoBehaviour
     {
-        [Inject] private CowManager cowManager;
+        [Inject] private IAnimalManager animalManager;
         [Inject] private PackageManager packageManager;
         [Inject] private MoneyManager moneyManager;
+        [Inject] IAPManager iapManager;
 
         // === İNEK LEVEL UP ===
 
@@ -21,35 +22,27 @@ namespace MilkFarm
         /// </summary>
         public bool UpgradeCowLevel(int cowIndex)
         {
-            var cow = cowManager.GetCow(cowIndex);
-            if (cow == null || !cow.isUnlocked)
-            {
-                Debug.LogWarning($"[UpgradeManager] İnek {cowIndex} açılmamış veya geçersiz!");
-                return false;
-            }
-
-            return cowManager.UpgradeCowLevel(cowIndex, moneyManager);
+            var animal = animalManager.GetAnimal(cowIndex);
+            if (animal == null || !animal.isUnlocked) return false;
+            // Not: UpgradeAnimal zaten para kontrolü yapıyor
+            return animalManager.UpgradeAnimal(cowIndex, iapManager);
         }
-
         /// <summary>
         /// İnek upgrade maliyetini al
         /// </summary>
         public float GetCowUpgradeCost(int cowIndex)
         {
-            var cow = cowManager.GetCow(cowIndex);
-            if (cow == null) return float.MaxValue;
-
-            return cowManager.CalculateCowUpgradeCost(cow.level);
+            var animal = animalManager.GetAnimal(cowIndex);
+            if (animal == null) return float.MaxValue;
+            return animalManager.CalculateUpgradeCost(animal.level);
         }
-
         /// <summary>
         /// İnek upgrade yapılabilir mi?
         /// </summary>
         public bool CanUpgradeCow(int cowIndex)
         {
-            var cow = cowManager.GetCow(cowIndex);
-            if (cow == null || !cow.isUnlocked) return false;
-
+            var animal = animalManager.GetAnimal(cowIndex);
+            if (animal == null || !animal.isUnlocked) return false;
             float cost = GetCowUpgradeCost(cowIndex);
             return moneyManager.CanAfford(cost);
         }
@@ -89,23 +82,6 @@ namespace MilkFarm
         public float GetCurrentMoney()
         {
             return moneyManager.GetCurrentMoney();
-        }
-
-        /// <summary>
-        /// Debug: Tüm inekleri max level yap
-        /// </summary>
-        [ContextMenu("Debug: Max All Cow Levels")]
-        public void DebugMaxAllCowLevels()
-        {
-            var cows = cowManager.GetAllCows();
-            foreach (var cow in cows)
-            {
-                if (cow.isUnlocked)
-                {
-                    cow.level = 10; // Max level örneği
-                }
-            }
-            Debug.Log("[UpgradeManager] Tüm inekler max level yapıldı!");
         }
     }
 }

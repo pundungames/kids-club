@@ -13,7 +13,7 @@ namespace MilkFarm
     {
         [Inject] private GameConfig config;
         [Inject] private IAPManager iapManager;
-        [Inject] private CowManager cowManager;
+        [Inject] private IAnimalManager animalManager;
         [Inject] private StationManager stationManager;
         [Inject] private PackageManager packageManager;
         [Inject] private CustomerManager customerManager;
@@ -127,26 +127,12 @@ namespace MilkFarm
         /// </summary>
         private void AutoCollectMilk()
         {
-            var cows = cowManager.GetAllCows();
-
-            // Her tick'te sadece 1 ineği işle (performans için)
-            // Veya hepsini işle, senin tercihin
-            // GDD'de "sadece 1 ineği işle" deniyor, ama ben hepsini yapacağım
-            
-            foreach (var cow in cows)
+            var animals = animalManager.GetAllAnimals();
+            foreach (var animal in animals)
             {
-                if (!cow.isUnlocked) continue;
-                if (cow.currentMilk <= 0) continue;
-
-                // Süt topla
-                int collectedMilk = cow.currentMilk;
-                cow.currentMilk = 0;
-                cow.productionTimer = 0f;
-
-                packageManager.AddMilk(collectedMilk);
-                MilkFarmEvents.CowMilkCollected(cow.index, collectedMilk);
-                
-                LogDebug($"İnek {cow.index}'den {collectedMilk} süt toplandı (Auto Worker).");
+                if (!animal.isUnlocked) continue;
+                if (animal.currentProduct <= 0) continue;
+                animalManager.CollectFromAnimal(animal.index);
             }
         }
 

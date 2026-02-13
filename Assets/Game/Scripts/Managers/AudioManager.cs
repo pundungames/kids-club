@@ -72,7 +72,7 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneChanged(Scene oldScene, Scene newScene)
     {
-        AllStop();
+        //AllStop();
     }
     public void AllStop()
     {

@@ -321,10 +321,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c1ed2512832ab046860c6361c9f285b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  milkSlots:
+  productSlots:
   - {fileID: 870095200643844195}
   - {fileID: 3237631486981046337}
   - {fileID: 593857831121774019}
   - {fileID: 4149838753095613527}
   - {fileID: 2415553993656770220}
   - {fileID: 2494440745105368869}
+  productScale: 0.8

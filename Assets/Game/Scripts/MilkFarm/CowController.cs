@@ -16,7 +16,7 @@ namespace MilkFarm
         private TroughController feedTrough;
         private TroughController waterTrough;
         [Inject] private CowManager cowManager;
-
+        [Inject] AudioManager audioManager;
         [Header("Görsel Ayarlar")]
         [SerializeField] private Image progressBar;
         [SerializeField] private GameObject timerCanvas;
@@ -209,7 +209,7 @@ namespace MilkFarm
         void OnMouseDown()
         {
             isHolding = true;
-
+            audioManager.Play("Tap");
             if (IsPackageManagerFull()) return;
 
             if (milkStack > 0)

@@ -10,13 +10,14 @@ public class TableClicker : MonoBehaviour
 {
     [Header("Manager Referanslarý")]
     [Inject] PackageManager packageManager;
-
+    [Inject] AudioManager audioManager;
     void OnMouseDown()
     {
         if (packageManager != null)
         {
             Debug.Log("[TableClicker] Masaya týklandý! Satýþ deneniyor...");
             packageManager.OnStationClicked();
+            audioManager.Play("Sell");
         }
         else
         {

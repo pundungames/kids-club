@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using Zenject;
+using Dreamteck.Splines;
+using System;
 
 namespace MilkFarm
 {
@@ -11,6 +13,7 @@ namespace MilkFarm
     public class AreaController : MonoBehaviour
     {
         [Header("Area Info")]
+        [SerializeField] private AreaType areaType; // Müfettişten (Inspector) seçeceksin
         [SerializeField] private int areaIndex;
         [SerializeField] private bool isUnlockedByDefault = false;
 
@@ -24,6 +27,7 @@ namespace MilkFarm
         [SerializeField] private GameObject troughsParent;
         [SerializeField] private GameObject slotsParent;
         [SerializeField] private GameObject animalsLockParent;
+        [SerializeField] internal SplineComputer spline;
 
         [Header("Troughs")]
         [SerializeField] private GameObject[] troughs;
@@ -69,6 +73,7 @@ namespace MilkFarm
         private void Start()
         {
             LoadUnlockStates();
+            if(isUnlockedByDefault) lockButton.gameObject.SetActive(false);
         }
 
         // === EVENT HANDLERS ===
@@ -87,10 +92,19 @@ namespace MilkFarm
 
         private void HandleAreaUnlocked(int index)
         {
-            if (index != areaIndex) return;
+            // Eğer gelen index bizimkiyle aynıysa VE biz doğru türdeysek aç
+            // Not: MilkFarmEvents.AreaUnlocked() içine tür bilgisi de eklenebilir 
+            // ama şimdilik save'den tekrar kontrol etmek en güvenlisi:
 
-            Debug.Log($"[AreaController] 🔔 Event: Area {areaIndex} unlocked!");
-            Unlock();
+            var saveData = saveManager.GetCurrentSaveData();
+            if (areaType == AreaType.Cow && saveData.unlockedAreas.Contains(areaIndex))
+            {
+                Unlock();
+            }
+            else if (areaType == AreaType.Chicken && saveData.unlockedChickenAreas.Contains(areaIndex))
+            {
+                Unlock();
+            }
         }
 
         private void HandleTroughUnlocked(int index)
@@ -162,68 +176,54 @@ namespace MilkFarm
         private void LoadUnlockStates()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            if (saveData == null)
+            if (saveData == null) return;
+
+            // ✅ 1. Hangi listeye bakacağımızı seçiyoruz
+            bool areaWasUnlocked = false;
+            if (areaType == AreaType.Cow)
             {
-                Debug.LogWarning("[AreaController] SaveData null!");
-                return;
+                areaWasUnlocked = saveData.unlockedAreas != null && saveData.unlockedAreas.Contains(areaIndex);
+            }
+            else if (areaType == AreaType.Chicken)
+            {
+                areaWasUnlocked = saveData.unlockedChickenAreas != null && saveData.unlockedChickenAreas.Contains(areaIndex);
             }
 
-            Debug.Log($"[AreaController] 📂 Loading unlock states for Area {areaIndex}...");
-
-            // ✅ 1. Area unlock check
-            if (saveData.unlockedAreas != null && saveData.unlockedAreas.Contains(areaIndex))
+            if (areaWasUnlocked)
             {
                 Unlock();
-                Debug.Log($"[AreaController] ✅ Area {areaIndex} was unlocked (load)");
             }
             else
             {
-                Debug.Log($"[AreaController] Area {areaIndex} is LOCKED");
+                Lock();
             }
 
-            // ✅ 2. Close lock buttons for unlocked cows
-            // 3 cows per area (NOT 4!)
+            // ✅ 2. Hayvan kilitlerini de türe göre kontrol ediyoruz
+            int animalsPerArea = 3;
+            int startAnimalIndex = areaIndex * animalsPerArea;
 
-            int cowsPerArea = 3; // ✅ Her area'da 3 inek
-            int startCowIndex = areaIndex * cowsPerArea;
-            // Area 0: Cows 0-2
-            // Area 1: Cows 3-5
-            // Area 2: Cows 6-8
-            // Area 3: Cows 9-11
-
-            if (saveData.cows == null || saveData.cows.Count == 0)
+            for (int i = 0; i < animalsPerArea; i++)
             {
-                Debug.LogWarning("[AreaController] No cow save data!");
-                return;
-            }
+                int globalIndex = startAnimalIndex + i;
+                bool isAnimalUnlocked = false;
 
-            for (int i = 0; i < cowsPerArea; i++)
-            {
-                int globalCowIndex = startCowIndex + i;
-
-                // Check bounds
-                if (globalCowIndex >= saveData.cows.Count)
+                if (areaType == AreaType.Cow)
                 {
-                    Debug.LogWarning($"[AreaController] Cow index {globalCowIndex} out of bounds!");
-                    break;
-                }
-
-                var cowData = saveData.cows[globalCowIndex];
-
-                if (cowData != null && cowData.isUnlocked)
-                {
-                    CloseLockButton(i); // Local slot: 0, 1, 2
-                   // Debug.Log($"[AreaController] ✅ Cow {globalCowIndex} unlocked → Slot {i} + button closed");
+                    if (globalIndex < saveData.cows.Count)
+                        isAnimalUnlocked = saveData.cows[globalIndex].isUnlocked;
                 }
                 else
                 {
-                  //  Debug.Log($"[AreaController] Cow {globalCowIndex} LOCKED → Slot {i} + button OPEN");
+                    if (globalIndex < saveData.chickens.Count)
+                        isAnimalUnlocked = saveData.chickens[globalIndex].isUnlocked;
+                }
+
+                if (isAnimalUnlocked)
+                {
+                    CloseLockButton(i);
                 }
             }
-
-          //  Debug.Log($"[AreaController] ✅ Load complete!");
-        }
-        // === DEBUG ===
+        }        // === DEBUG ===
 
         [ContextMenu("Debug: Unlock Area")]
         public void DebugUnlock() => Unlock();
@@ -238,3 +238,5 @@ namespace MilkFarm
         }
     }
 }
+[Serializable]
+public enum AreaType { Cow, Chicken } // Türleri belirleyelim

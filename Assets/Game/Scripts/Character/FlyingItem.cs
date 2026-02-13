@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System;
+using DG.Tweening;
 
 /// <summary>
 /// Flying animation with speed control
@@ -70,5 +71,15 @@ public class FlyingItem : MonoBehaviour
     public void SetSpeed(float speed)
     {
         flySpeed = speed;
+    }
+    public void StartFinalJump(Vector3 target, Action callback)
+    {
+        // Mevcut Arc sistemini kullanabilirsin veya DOTween:
+        transform.DOJump(target, 1.5f, 1, 0.5f) // (Hedef, Zıplama Gücü, Zıplama Sayısı, Süre)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() => callback?.Invoke());
+
+        // Dönüş efekti
+        transform.DORotate(new Vector3(0, 360, 0), 0.5f, RotateMode.FastBeyond360);
     }
 }
