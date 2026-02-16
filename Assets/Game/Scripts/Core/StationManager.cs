@@ -56,6 +56,7 @@ namespace MilkFarm
         [Inject] private GameConfig config;
         [Inject] private SaveManager saveManager;
         [Inject] private IAPManager iapManager;
+        [SerializeField] private bool isChickenScene = false;
 
         [Header("İstasyon Prefab ve Spawn")]
         [SerializeField] private Transform[] stationSlots; // 3 istasyon
@@ -94,42 +95,46 @@ namespace MilkFarm
         }
         private void InitializeStations()
         {
-            // 12 inek / 3 inek per station = 4 istasyon
-            int stationCount = Mathf.CeilToInt((float)config.maxCowSlots / config.cowsPerStation);
+            int maxSlots, perStation;
 
-            Debug.Log($"[StationManager] İstasyon sayısı: {stationCount}"); // 4 olmalı
+            if (isChickenScene)
+            {
+                maxSlots = config.maxChickenSlots;       // 12
+                perStation = config.chickensPerStation;   // 3
+            }
+            else
+            {
+                maxSlots = config.maxCowSlots;            // 12
+                perStation = config.cowsPerStation;        // 4
+            }
+
+            int stationCount = Mathf.CeilToInt((float)maxSlots / perStation);
+
+            Debug.Log($"[StationManager] İstasyon sayısı: {stationCount} (chicken: {isChickenScene})");
 
             for (int i = 0; i < stationCount; i++)
             {
                 Station station = new Station(i);
-
-                // ✅ Config ile initialize
                 station.InitializeWithConfig(config);
-
                 stations.Add(station);
 
                 if (i < stationSlots.Length)
-                {
                     station.transform = stationSlots[i];
-                }
 
-                // Yemlik controller ata
                 if (feedTroughs != null && i < feedTroughs.Length && feedTroughs[i] != null)
                 {
                     station.feedTroughController = feedTroughs[i];
                     station.feedTroughController.Initialize(i, true, config, iapManager);
                 }
 
-                // Suluk controller ata
                 if (waterTroughs != null && i < waterTroughs.Length && waterTroughs[i] != null)
                 {
                     station.waterTroughController = waterTroughs[i];
                     station.waterTroughController.Initialize(i, false, config, iapManager);
                 }
             }
-
-            Debug.Log($"[StationManager] {stations.Count} istasyon başlatıldı (Config: {config.feedingInterval}s)");
         }
+
 
         /// <summary>
         /// Tap handler ekle (yemlik veya suluk için)
@@ -224,63 +229,67 @@ namespace MilkFarm
         public void LoadFromSaveData()
         {
             var saveData = saveManager.GetCurrentSaveData();
+            var stationsSave = GetStationsSaveData(saveData); // ✅
 
-            for (int i = 0; i < stations.Count && i < saveData.stations.Count; i++)
+            for (int i = 0; i < stations.Count && i < stationsSave.Count; i++)
             {
-                var stationData = saveData.stations[i];
+                var stationData = stationsSave[i];
 
-                // Station data
                 stations[i].foodFill = stationData.foodFill;
                 stations[i].waterFill = stationData.waterFill;
                 stations[i].feedingTimer = stationData.feedingTimer;
                 stations[i].wateringTimer = stationData.wateringTimer;
 
-                // ✅ YENİ: Trough controller'lara load
                 if (stations[i].feedTroughController != null)
-                {
                     stations[i].feedTroughController.LoadFromSaveData(stationData.feedTrough);
-                }
 
                 if (stations[i].waterTroughController != null)
-                {
                     stations[i].waterTroughController.LoadFromSaveData(stationData.waterTrough);
-                }
 
                 UpdateStationVisuals(i);
             }
 
-            Debug.Log($"[StationManager] 📂 {stations.Count} istasyon yüklendi (Trough dahil)");
+            Debug.Log($"[StationManager] 📂 {stations.Count} istasyon yüklendi (chicken: {isChickenScene})");
         }
+        private List<StationSaveData> GetStationsSaveData(MilkFarmSaveData saveData)
+        {
+            if (isChickenScene)
+            {
+                if (saveData.chickenStations == null)
+                    saveData.chickenStations = new List<StationSaveData>();
 
+                // Listeyi genişlet gerekirse
+                while (saveData.chickenStations.Count < stations.Count)
+                    saveData.chickenStations.Add(new StationSaveData());
+
+                return saveData.chickenStations;
+            }
+            return saveData.stations;
+        }
         /// <summary>
         /// Mevcut durumu save data'ya kaydet
         /// </summary>
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();
+            var stationsSave = GetStationsSaveData(saveData); // ✅
 
-            for (int i = 0; i < stations.Count; i++)
+            for (int i = 0; i < stations.Count && i < stationsSave.Count; i++)
             {
-                // Station data
-                saveData.stations[i].foodFill = stations[i].foodFill;
-                saveData.stations[i].waterFill = stations[i].waterFill;
-                saveData.stations[i].feedingTimer = stations[i].feedingTimer;
-                saveData.stations[i].wateringTimer = stations[i].wateringTimer;
+                stationsSave[i].foodFill = stations[i].foodFill;
+                stationsSave[i].waterFill = stations[i].waterFill;
+                stationsSave[i].feedingTimer = stations[i].feedingTimer;
+                stationsSave[i].wateringTimer = stations[i].wateringTimer;
 
-                // ✅ YENİ: Trough controller'lardan save
                 if (stations[i].feedTroughController != null)
-                {
-                    stations[i].feedTroughController.SaveToData(saveData.stations[i].feedTrough);
-                }
+                    stations[i].feedTroughController.SaveToData(stationsSave[i].feedTrough);
 
                 if (stations[i].waterTroughController != null)
-                {
-                    stations[i].waterTroughController.SaveToData(saveData.stations[i].waterTrough);
-                }
+                    stations[i].waterTroughController.SaveToData(stationsSave[i].waterTrough);
             }
 
             saveManager.SaveGame(saveData);
-            Debug.Log($"[StationManager] 💾 {stations.Count} istasyon kaydedildi (Trough dahil)");
+            Debug.Log($"[StationManager] 💾 {stations.Count} istasyon kaydedildi (chicken: {isChickenScene})");
         }
         private void Update()
         {

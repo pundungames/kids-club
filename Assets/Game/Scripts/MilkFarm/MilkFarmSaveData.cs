@@ -139,19 +139,27 @@ namespace MilkFarm
     [Serializable]
     public class MilkFarmSaveData
     {
-        // Money
+        // Money (Cow Farm)
         public float currentMoney;
         public float pendingMoney;
         public int pendingCoins;
 
+        // ✅ Money (Chicken Farm - ayrı)
+        public float chickenMoney;
+        public float chickenPendingMoney;
+        public int chickenPendingCoins;
+
         // Cows
         public List<CowSaveData> cows = new List<CowSaveData>();
 
-        // ✅ Chickens (YENİ - ayrı save)
+        // ✅ Chickens (ayrı save)
         public List<ChickenSaveData> chickens = new List<ChickenSaveData>();
 
-        // Stations (Troughs)
+        // Stations (Troughs) - Cow Farm
         public List<StationSaveData> stations = new List<StationSaveData>();
+
+        // ✅ Stations (Troughs) - Chicken Farm
+        public List<StationSaveData> chickenStations = new List<StationSaveData>();
 
         // Packaging
         public PackageSaveData packaging = new PackageSaveData();
@@ -201,11 +209,12 @@ namespace MilkFarm
             }
 
             InitializeStations(4);
+            InitializeChickenStations(4); // ✅
             packaging = new PackageSaveData();
             chickenPackaging = new PackageSaveData();
             iap = new IAPSaveData();
 
-            Debug.Log("[MilkFarmSaveData] ✅ New save: 12 cows + 12 chickens (first unlocked), 4 stations");
+            Debug.Log("[MilkFarmSaveData] ✅ New save: 12 cows + 12 chickens (first unlocked), 4+4 stations");
         }
 
         public void InitializeStations(int stationCount)
@@ -215,11 +224,22 @@ namespace MilkFarm
                 stations.Add(new StationSaveData());
         }
 
+        public void InitializeChickenStations(int stationCount)
+        {
+            chickenStations = new List<StationSaveData>();
+            for (int i = 0; i < stationCount; i++)
+                chickenStations.Add(new StationSaveData());
+        }
+
         public void ApplyConfigToStations(GameConfig config)
         {
             if (config == null) return;
             foreach (var station in stations)
                 station.InitializeWithConfig(config);
+            // ✅ Chicken stations da
+            if (chickenStations != null)
+                foreach (var station in chickenStations)
+                    station.InitializeWithConfig(config);
         }
     }
 }

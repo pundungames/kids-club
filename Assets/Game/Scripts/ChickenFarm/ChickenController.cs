@@ -124,7 +124,7 @@ namespace ChickenFarm
             if (packageManager == null) return false;
             int total = packageManager.GetProductionStackCount();
             if (packageManager.HasActiveCrate()) total++;
-            return total >= 8;
+            return total >=16;
         }
 
         void OnMouseUp() { isHolding = false; }
