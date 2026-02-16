@@ -161,7 +161,7 @@ Material:
     - _SColor: {r: 0, g: 0.071005814, b: 0.3301887, a: 1}
     - _SketchColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
-    - _SpecularColor: {r: 1, g: 0.74953294, b: 0.25, a: 1}
+    - _SpecularColor: {r: 0.764151, g: 0.5081004, b: 0, a: 1}
   m_BuildTextureStacks: []
 --- !u!114 &505600317944611735
 MonoBehaviour:
