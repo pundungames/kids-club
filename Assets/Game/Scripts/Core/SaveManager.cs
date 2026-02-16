@@ -43,8 +43,8 @@ namespace MilkFarm
                         // ✅ MIGRATION: Eski save'de yeni field'lar yoksa oluştur
                         MigrateIfNeeded(_currentSaveData);
 
-                        if (config != null)
-                            _currentSaveData.ApplyConfigToStations(config);
+                        // ✅ Load'da ApplyConfigToStations ÇAĞIRMA!
+                        // Trough currentAmount save'den gelir, config ile ezilmemeli.
 
                         return _currentSaveData;
                     }

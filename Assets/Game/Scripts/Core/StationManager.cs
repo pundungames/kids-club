@@ -158,24 +158,22 @@ namespace MilkFarm
         public void LoadFromSaveData()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            var stationsSave = GetStationsSaveData(saveData); // ✅
+            var stationsSave = GetStationsSaveData(saveData);
 
             for (int i = 0; i < stations.Count && i < stationsSave.Count; i++)
             {
                 var stationData = stationsSave[i];
-
-                if (stations[i].feedTroughController != null)
-                    stations[i].feedTroughController.LoadFromSaveData(stationData.feedTrough);
-
-                if (stations[i].waterTroughController != null)
-                    stations[i].waterTroughController.LoadFromSaveData(stationData.waterTrough);
 
                 stations[i].foodFill = stationData.foodFill;
                 stations[i].waterFill = stationData.waterFill;
                 stations[i].feedingTimer = stationData.feedingTimer;
                 stations[i].wateringTimer = stationData.wateringTimer;
 
-                
+                if (stations[i].feedTroughController != null)
+                    stations[i].feedTroughController.LoadFromSaveData(stationData.feedTrough);
+
+                if (stations[i].waterTroughController != null)
+                    stations[i].waterTroughController.LoadFromSaveData(stationData.waterTrough);
 
             }
 
@@ -186,43 +184,42 @@ namespace MilkFarm
             if (isChickenScene)
             {
                 if (saveData.chickenStations == null)
-                {
-                    Debug.LogError("saveData.chickenStations null");
                     saveData.chickenStations = new List<StationSaveData>();
-                }
-
-                // Listeyi genişlet gerekirse
                 while (saveData.chickenStations.Count < stations.Count)
                     saveData.chickenStations.Add(new StationSaveData());
-
                 return saveData.chickenStations;
             }
             return saveData.stations;
         }
+
         /// <summary>
         /// Mevcut durumu save data'ya kaydet
         /// </summary>
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();
-            var stationsSave = GetStationsSaveData(saveData); // ✅
+            var stationsSave = GetStationsSaveData(saveData);
 
             for (int i = 0; i < stations.Count && i < stationsSave.Count; i++)
             {
-                stationsSave[i].foodFill = stations[i].foodFill;
-                stationsSave[i].waterFill = stations[i].waterFill;
-                stationsSave[i].feedingTimer = stations[i].feedingTimer;
-                stationsSave[i].wateringTimer = stations[i].wateringTimer;
-
+                // ✅ TroughController'dan GÜNCEL değeri al
                 if (stations[i].feedTroughController != null)
+                {
+                    stationsSave[i].foodFill = stations[i].feedTroughController.GetFillAmount();
                     stations[i].feedTroughController.SaveToData(stationsSave[i].feedTrough);
+                }
 
                 if (stations[i].waterTroughController != null)
+                {
+                    stationsSave[i].waterFill = stations[i].waterTroughController.GetFillAmount();
                     stations[i].waterTroughController.SaveToData(stationsSave[i].waterTrough);
+                }
+
+                stationsSave[i].feedingTimer = stations[i].feedingTimer;
+                stationsSave[i].wateringTimer = stations[i].wateringTimer;
             }
 
             saveManager.SaveGame(saveData);
-            Debug.Log($"[StationManager] 💾 {stations.Count} istasyon kaydedildi (chicken: {isChickenScene})");
         }
         /// <summary>
         /// İstasyon bilgisini al
