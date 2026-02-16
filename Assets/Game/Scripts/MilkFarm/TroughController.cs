@@ -170,12 +170,6 @@ namespace MilkFarm
             Debug.Log($"[TroughController] {name} - Aktif inek: {activeCowCount}");
         }
 
-        public void SetProducingCowCount(int count)
-        {
-            producingCowCount = count;
-            Debug.Log($"[TroughController] {name} - Üreten inek: {producingCowCount}");
-        }
-
         public void OnCowStartProducing()
         {
             producingCowCount++;
@@ -221,39 +215,6 @@ namespace MilkFarm
 
         public float GetFillAmount() => currentFill;
 
-        public void SetFillAmount(float amount)
-        {
-            currentFill = Mathf.Clamp01(amount);
-            wasDepleted = false;
-            UpdateVisuals();
-        }
-
-        public int GetActiveCowCount() => activeCowCount;
-        public int GetProducingCowCount() => producingCowCount;
-
-        [ContextMenu("Debug: Fill Instantly")]
-        public void DebugFillInstantly()
-        {
-            currentFill = 1f;
-            wasDepleted = false;
-            UpdateVisuals();
-        }
-
-        [ContextMenu("Debug: Empty Instantly")]
-        public void DebugEmptyInstantly()
-        {
-            currentFill = 0f;
-            UpdateVisuals();
-            OnDepleted();
-        }
-
-        [ContextMenu("Debug: Set 50%")]
-        public void DebugSet50Percent()
-        {
-            currentFill = 0.5f;
-            wasDepleted = false;
-            UpdateVisuals();
-        }
         /// <summary>
         /// Save event handler
         /// </summary>

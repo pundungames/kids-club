@@ -124,12 +124,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!4 &9026793 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 399281293173550976, guid: 2bc93fd0a38f6764f84dab5292e45960,
-    type: 3}
-  m_PrefabInstance: {fileID: 2727312594246794397}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &26757118
 GameObject:
   m_ObjectHideFlags: 0
@@ -303,6 +297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b109692e9af3e45b73905576a14a3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isChickenScene: 0
   coinSpawnPoint: {fileID: 1587463625}
   coinPrefab: {fileID: 613565041169313681, guid: 86ac2495dab22e64f950cdefcf7e1662,
     type: 3}
@@ -357,9 +352,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 157d8bb1855dbc7449a505fad5947bbe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isChickenScene: 0
   totalStables: 4
   cowsPerStable: 3
-  isChicken: 1
   stableUnlockCosts: 000000000a000000140000001e000000
 --- !u!1 &130294313
 GameObject:
@@ -686,12 +681,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 212095769}
   m_CullTransparentMesh: 1
---- !u!4 &228507742 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 399281293173550976, guid: 2bc93fd0a38f6764f84dab5292e45960,
-    type: 3}
-  m_PrefabInstance: {fileID: 946396566}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &238183666
 GameObject:
   m_ObjectHideFlags: 0
@@ -1319,11 +1308,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75482d21556a3374c84d71a39e87e4ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isChickenScene: 0
   stationSlots:
-  - {fileID: 9026793}
-  - {fileID: 423656896}
-  - {fileID: 228507742}
-  - {fileID: 1343128589}
+  - {fileID: 2727312594246794400}
+  - {fileID: 2727312594246794399}
+  - {fileID: 2727312594246794398}
+  - {fileID: 578764486}
+  - {fileID: 578764485}
+  - {fileID: 578764484}
+  - {fileID: 946396569}
+  - {fileID: 946396568}
+  - {fileID: 946396567}
+  - {fileID: 1737939697}
+  - {fileID: 1737939696}
+  - {fileID: 1737939695}
   feedTroughs:
   - {fileID: 2727312594246794402}
   - {fileID: 578764488}
@@ -1735,12 +1733,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 407411024}
   m_CullTransparentMesh: 1
---- !u!4 &423656896 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 399281293173550976, guid: 2bc93fd0a38f6764f84dab5292e45960,
-    type: 3}
-  m_PrefabInstance: {fileID: 578764483}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &432822753
 GameObject:
   m_ObjectHideFlags: 0
@@ -1937,6 +1929,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   customerManager: {fileID: 882523705}
+  isChickenScene: 0
   caseSpawnPoint: {fileID: 1824086123}
   cratePrefab: {fileID: 6237993294622997855, guid: e2b7dc16473dafc47ae2fa798df71690,
     type: 3}
@@ -7995,12 +7988,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!4 &1343128589 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 399281293173550976, guid: 2bc93fd0a38f6764f84dab5292e45960,
-    type: 3}
-  m_PrefabInstance: {fileID: 1737939694}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1351165734
 GameObject:
   m_ObjectHideFlags: 0

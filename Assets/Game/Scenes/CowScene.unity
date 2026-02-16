@@ -1818,9 +1818,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 157d8bb1855dbc7449a505fad5947bbe, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isChickenScene: 0
   totalStables: 4
   cowsPerStable: 3
-  isChicken: 0
   stableUnlockCosts: 000000000a000000140000001e000000
 --- !u!1001 &545222931
 PrefabInstance:
@@ -4387,6 +4387,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7b109692e9af3e45b73905576a14a3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isChickenScene: 0
   coinSpawnPoint: {fileID: 1089239377}
   coinPrefab: {fileID: 613565041169313681, guid: 86ac2495dab22e64f950cdefcf7e1662,
     type: 3}
@@ -6886,6 +6887,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   customerManager: {fileID: 882046107}
+  isChickenScene: 0
   caseSpawnPoint: {fileID: 2099350408}
   cratePrefab: {fileID: 6764060176343762456, guid: 3c965a535d13f4e4f8e6db69b1422e71,
     type: 3}
@@ -8077,19 +8079,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75482d21556a3374c84d71a39e87e4ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isChickenScene: 0
   stationSlots:
-  - {fileID: 2591255454110237412}
-  - {fileID: 2591255454110237411}
-  - {fileID: 2591255454110237410}
-  - {fileID: 690625821}
-  - {fileID: 690625820}
-  - {fileID: 690625819}
-  - {fileID: 2061230861}
-  - {fileID: 2061230860}
-  - {fileID: 2061230859}
-  - {fileID: 1468504343}
-  - {fileID: 1468504342}
-  - {fileID: 1468504341}
+  - {fileID: 2591255454110237409}
+  - {fileID: 690625818}
+  - {fileID: 2061230858}
+  - {fileID: 1468504340}
   feedTroughs:
   - {fileID: 343846108}
   - {fileID: 1419671776}
