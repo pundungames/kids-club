@@ -83,8 +83,10 @@ namespace MilkFarm
 
         private void OnStableSlotClicked(int stableIndex)
         {
-            bool isUnlocked = stableManager.IsStableUnlocked(stableIndex);
-
+            bool isUnlocked = false;
+            if (isChicken)
+                isUnlocked = stableManager.IsChickenStableUnlocked(stableIndex);
+            else isUnlocked = stableManager.IsStableUnlocked(stableIndex);
             if (isUnlocked)
             {
                 if (stableInfoPanel != null)

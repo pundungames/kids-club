@@ -12,11 +12,11 @@ namespace MilkFarm
         [Inject] private IAnimalManager animalManager;
         [Inject] private IAPManager iapManager;
         [Inject] private GameConfig config;
-        [SerializeField] private bool isChickenScene = false;
 
         [Header("Stable Settings")]
         [SerializeField] private int totalStables = 4;
         [SerializeField] private int cowsPerStable = 3;
+        [SerializeField] internal bool isChicken;
         [Header("Stable Unlock Costs (Gems)")]
         [SerializeField] private int[] stableUnlockCosts = { 0, 10, 20, 30 }; // Stable 1 free
 
@@ -24,6 +24,10 @@ namespace MilkFarm
         {
             // Stable 1 default unlocked
             if (!IsStableUnlocked(0))
+            {
+                UnlockStable(0, free: true);
+            }
+            if (!IsChickenStableUnlocked(0))
             {
                 UnlockStable(0, free: true);
             }
@@ -35,26 +39,34 @@ namespace MilkFarm
         public bool IsStableUnlocked(int stableIndex)
         {
             if (stableIndex < 0 || stableIndex >= totalStables) return false;
-
-            if (isChickenScene)
-                return iapManager.IsChickenAreaUnlocked(stableIndex);
-            else
-                return iapManager.IsAreaUnlocked(stableIndex);
+            return iapManager.IsAreaUnlocked(stableIndex);
         }
-
+        public bool IsChickenStableUnlocked(int stableIndex)
+        {
+            if (stableIndex < 0 || stableIndex >= totalStables) return false;
+            return iapManager.IsChickenAreaUnlocked(stableIndex);
+        }
+        /// <summary>
+        /// Unlock stable with gems
+        /// </summary>
         public bool UnlockStable(int stableIndex, bool free = false)
         {
             if (stableIndex < 0 || stableIndex >= totalStables) return false;
-            if (IsStableUnlocked(stableIndex)) return false;
-
+            if (isChicken)
+            {
+                if (IsChickenStableUnlocked(stableIndex)) return false;
+            }
+            else
+            {
+                if (IsStableUnlocked(stableIndex)) return false;
+            }
             if (!free)
             {
                 int cost = GetStableUnlockCost(stableIndex);
                 if (!iapManager.SpendGems(cost)) return false;
             }
 
-            if (isChickenScene)
-                iapManager.UnlocChickenArea(stableIndex);
+            if (isChicken) iapManager.UnlocChickenArea(stableIndex);
             else
                 iapManager.UnlockArea(stableIndex);
 
