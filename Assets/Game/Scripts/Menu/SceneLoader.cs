@@ -1,3 +1,4 @@
+﻿using MilkFarm;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Zenject;
@@ -19,14 +20,14 @@ public class SceneLoader : MonoBehaviour
     public void OpenCowFarm()
     {
         audioManager.Play("Tap");
-
+        MilkFarmEvents.SaveRequested(); // ✅
         SceneManager.LoadScene(2);
     }
 
     public void OpenChickenFarm()
     {
         audioManager.Play("Tap");
-
+        MilkFarmEvents.SaveRequested(); // ✅
         SceneManager.LoadScene(3);
     }
     public void OpenFarm()
@@ -64,6 +65,8 @@ public class SceneLoader : MonoBehaviour
 
     public void BackToMainMenu()
     {
+        MilkFarmEvents.SaveRequested(); // ✅ Save fire et
+
         SceneManager.LoadScene(1);
     }
 }

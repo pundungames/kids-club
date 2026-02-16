@@ -5,14 +5,11 @@ using System.Collections.Generic;
 
 namespace MilkFarm
 {
-    /// <summary>
-    /// Money Manager - Multi Coin Version
-    /// 1 şişe = 1 coin
-    /// </summary>
     public class MoneyManager : MonoBehaviour
     {
         [Inject] private SaveManager saveManager;
         [Inject] private CurrencyManager currencyManager;
+        [SerializeField] private bool isChickenScene = false;
 
         [Header("Coin Spawn")]
         [SerializeField] private Transform coinSpawnPoint;
@@ -29,7 +26,7 @@ namespace MilkFarm
         [SerializeField] private int coinsPerClick = 9;
 
         [Header("Spawn Delay")]
-        [SerializeField] private float coinSpawnDelay = 0.1f; // Coin'ler arasında delay
+        [SerializeField] private float coinSpawnDelay = 0.1f;
 
         private float currentMoney;
         private float pendingMoney;
@@ -45,6 +42,7 @@ namespace MilkFarm
             CalculateGridDirections();
             LoadMoney();
         }
+
         private void OnEnable()
         {
             MilkFarmEvents.OnSaveRequested += HandleSaveRequested;
@@ -55,12 +53,11 @@ namespace MilkFarm
             MilkFarmEvents.OnSaveRequested -= HandleSaveRequested;
         }
 
-        // ✅ HandleSaveRequested metodu EKLE:
-
         private void HandleSaveRequested()
         {
             SaveMoney();
         }
+
         private void CalculateGridDirections()
         {
             if (coinSpawnPoint == null)
@@ -70,76 +67,67 @@ namespace MilkFarm
             }
 
             basePosition = coinSpawnPoint.position;
-
-            // SpawnPoint’in kendi yönleri (local axis)
             xDirection = coinSpawnPoint.right * coinSpacingX;
             zDirection = coinSpawnPoint.forward * coinSpacingZ;
             yDirection = coinSpawnPoint.up * coinSpacingY;
-
-            Debug.Log("[MoneyManager] Grid directions calculated dynamically!");
         }
-
 
         private void LoadMoney()
         {
             var saveData = saveManager.GetCurrentSaveData();
 
-            currentMoney = saveData.currentMoney;
-            pendingMoney = saveData.pendingMoney; // ✅ YENİ
-
-            // ✅ YENİ: Pending coin'leri spawn et
-            int coinCount = saveData.pendingCoins;
-            if (coinCount > 0)
+            // ✅ HEPSİ sahneye göre ayrı
+            if (isChickenScene)
             {
-                Debug.Log($"[MoneyManager] 📂 Loading {coinCount} pending coins...");
-                StartCoroutine(SpawnPendingCoinsOnLoad(coinCount));
+                currentMoney = saveData.chickenMoney;
+                pendingMoney = saveData.chickenPendingMoney;
+                int coinCount = saveData.chickenPendingCoins;
+
+                if (coinCount > 0)
+                    StartCoroutine(SpawnPendingCoinsOnLoad(coinCount));
+
+                Debug.Log($"[MoneyManager-Chicken] 💵 Loaded - Money: {currentMoney}, Pending: {pendingMoney}, Coins: {coinCount}");
+            }
+            else
+            {
+                currentMoney = saveData.currentMoney;
+                pendingMoney = saveData.pendingMoney;
+                int coinCount = saveData.pendingCoins;
+
+                if (coinCount > 0)
+                    StartCoroutine(SpawnPendingCoinsOnLoad(coinCount));
+
+                Debug.Log($"[MoneyManager-Cow] 💵 Loaded - Money: {currentMoney}, Pending: {pendingMoney}, Coins: {coinCount}");
             }
 
             if (currencyManager != null)
-            {
                 currencyManager.UpdateCashUI(currentMoney);
-            }
-
-            Debug.Log($"[MoneyManager] 💵 Loaded - Money: {currentMoney}, Pending: {pendingMoney}, Coins: {coinCount}");
         }
-
-        // ✅ YENİ METOD: Load'dan sonra coin spawn
 
         private IEnumerator SpawnPendingCoinsOnLoad(int count)
         {
             for (int i = 0; i < count; i++)
             {
                 SpawnSingleCoin(coinSpawnPoint != null ? coinSpawnPoint.position : transform.position);
-
-                // Instant görünmesi için frame delay (opsiyonel)
                 if (i % 9 == 0) yield return null;
             }
-
-            Debug.Log($"[MoneyManager] ✅ {count} coin spawn edildi!");
         }
 
-        /// <summary>
-        /// Para kazan - ÇOKLU COIN SPAWN
-        /// </summary>
-        /// <param name="amount">Toplam para</param>
-        /// <param name="bottleCount">Şişe sayısı (coin sayısı)</param>
-        /// <param name="spawnPosition">Spawn başlangıç pozisyonu</param>
+        // === EARN MONEY ===
+
         public void EarnMoney(float amount, int bottleCount, Vector3? spawnPosition = null)
         {
             pendingMoney += amount;
 
-            // Coin'leri delay ile spawn et
             Vector3 startPos = spawnPosition ?? coinSpawnPoint.position;
             StartCoroutine(SpawnMultipleCoins(bottleCount, startPos));
 
-            MilkFarmEvents.MoneyEarned(amount);
+            SaveMoney(); // ✅ Kazandıktan hemen sonra save!
 
-            Debug.Log($"[MoneyManager] 💰 Para kazanıldı: {amount} ({bottleCount} coin). Masada: {pendingMoney}");
+            MilkFarmEvents.MoneyEarned(amount);
+            Debug.Log($"[MoneyManager] 💰 +{amount} ({bottleCount} coin). Pending: {pendingMoney}");
         }
 
-        /// <summary>
-        /// Eski API uyumluluğu (tek coin)
-        /// </summary>
         public void EarnMoney(float amount, Vector3? spawnPosition = null)
         {
             EarnMoney(amount, 1, spawnPosition);
@@ -147,36 +135,22 @@ namespace MilkFarm
 
         // === COIN SPAWN ===
 
-        /// <summary>
-        /// Çoklu coin spawn (delay ile)
-        /// </summary>
         private IEnumerator SpawnMultipleCoins(int count, Vector3 startPos)
         {
             for (int i = 0; i < count; i++)
             {
                 SpawnSingleCoin(startPos);
-
-                // Delay (opsiyonel - animasyon için)
                 if (coinSpawnDelay > 0 && i < count - 1)
-                {
                     yield return new WaitForSeconds(coinSpawnDelay);
-                }
             }
         }
 
-        /// <summary>
-        /// Tek coin spawn
-        /// </summary>
         private void SpawnSingleCoin(Vector3 startPos)
         {
             if (coinPrefab == null || coinSpawnPoint == null) return;
 
             int maxCoins = gridSize * gridSize * maxLayers;
-            if (spawnedCoins.Count >= maxCoins)
-            {
-                Debug.LogWarning("[MoneyManager] Coin stack FULL!");
-                return;
-            }
+            if (spawnedCoins.Count >= maxCoins) return;
 
             int index = spawnedCoins.Count;
             Vector3 targetPos = CalculateCoinPosition(index);
@@ -217,12 +191,10 @@ namespace MilkFarm
             {
                 int lastIndex = spawnedCoins.Count - 1;
                 GameObject coin = spawnedCoins[lastIndex];
-
                 if (coin != null) Destroy(coin);
                 spawnedCoins.RemoveAt(lastIndex);
             }
 
-            Debug.Log($"[MoneyManager] {coinsToCollect} coin toplandı! Kalan: {spawnedCoins.Count}");
             CollectMoneyFromTable();
         }
 
@@ -237,14 +209,12 @@ namespace MilkFarm
                 pendingMoney = 0f;
 
                 if (currencyManager != null)
-                {
                     currencyManager.UpdateCashUI(currentMoney);
-                }
 
                 SaveMoney();
                 MilkFarmEvents.MoneyCollected(collected);
 
-                Debug.Log($"[MoneyManager] ✅ {collected} para toplandı! Toplam: {currentMoney}");
+                Debug.Log($"[MoneyManager] ✅ {collected} toplandı! Toplam: {currentMoney}");
             }
 
             CollectCoins();
@@ -254,23 +224,15 @@ namespace MilkFarm
 
         public bool SpendMoney(float amount)
         {
-            if (currentMoney < amount)
-            {
-                Debug.LogWarning($"[MoneyManager] ❌ Yetersiz para!");
-                return false;
-            }
+            if (currentMoney < amount) return false;
 
             currentMoney -= amount;
 
             if (currencyManager != null)
-            {
                 currencyManager.UpdateCashUI(currentMoney);
-            }
 
             SaveMoney();
             MilkFarmEvents.MoneySpent(amount);
-
-            Debug.Log($"[MoneyManager] 💸 {amount} harcandı. Kalan: {currentMoney}");
             return true;
         }
 
@@ -290,27 +252,29 @@ namespace MilkFarm
         {
             var saveData = saveManager.GetCurrentSaveData();
 
-            saveData.currentMoney = currentMoney;
-            saveData.pendingMoney = pendingMoney; // ✅ YENİ
-            saveData.pendingCoins = spawnedCoins.Count; // ✅ YENİ
+            // ✅ HEPSİ sahneye göre ayrı
+            if (isChickenScene)
+            {
+                saveData.chickenMoney = currentMoney;
+                saveData.chickenPendingMoney = pendingMoney;
+                saveData.chickenPendingCoins = spawnedCoins.Count;
+            }
+            else
+            {
+                saveData.currentMoney = currentMoney;
+                saveData.pendingMoney = pendingMoney;
+                saveData.pendingCoins = spawnedCoins.Count;
+            }
 
             saveManager.SaveGame(saveData);
-
-            Debug.Log($"[MoneyManager] 💾 Saved - Money: {currentMoney}, Pending: {pendingMoney}, Coins: {spawnedCoins.Count}");
         }
 
         // === DEBUG ===
 
         [ContextMenu("Debug: Earn 1000 (10 coins)")]
-        public void DebugEarnMoney()
-        {
-            EarnMoney(1000f, 10);
-        }
+        public void DebugEarnMoney() => EarnMoney(1000f, 10);
 
         [ContextMenu("Debug: Collect Money")]
-        public void DebugCollectMoney()
-        {
-            CollectMoneyFromTable();
-        }
+        public void DebugCollectMoney() => CollectMoneyFromTable();
     }
 }

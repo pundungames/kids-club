@@ -16,6 +16,7 @@ namespace MilkFarm
         [SerializeField] private AreaType areaType; // Müfettişten (Inspector) seçeceksin
         [SerializeField] private int areaIndex;
         [SerializeField] private bool isUnlockedByDefault = false;
+        [SerializeField] private bool isChickenScene = false;
 
         [Header("Lock UI")]
         [SerializeField] private GameObject lockButton;
@@ -197,7 +198,6 @@ namespace MilkFarm
             {
                 Lock();
             }
-
             // ✅ 2. Hayvan kilitlerini de türe göre kontrol ediyoruz
             int animalsPerArea = 3;
             int startAnimalIndex = areaIndex * animalsPerArea;

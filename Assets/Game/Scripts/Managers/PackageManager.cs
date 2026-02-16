@@ -16,6 +16,7 @@ namespace MilkFarm
 
         [Header("Referanslar")]
         [SerializeField] private CustomerManager customerManager;
+        [SerializeField] private bool isChickenScene = false; // Inspector'dan ayarla
 
         [Header("1. ÜRETİM ALANI (Production Stack)")]
         [SerializeField] private Transform caseSpawnPoint;
@@ -38,7 +39,7 @@ namespace MilkFarm
         private int currentCapacity;
 
         private bool isAddingMilk = false;
-        private Queue<Vector3> milkQueue = new Queue<Vector3>();
+        private Queue<MilkQueueItem> milkQueue = new Queue<MilkQueueItem>();
 
         private void Awake()
         {
@@ -56,6 +57,21 @@ namespace MilkFarm
 
             if (productionFullIcon != null) productionFullIcon.SetActive(false);
             if (salesFullIcon != null) salesFullIcon.SetActive(false);
+        }
+        private void Update()
+        {
+            // Crate fiziksel olarak doluysa ve queue çalışmıyorsa complete et
+            if (currentActiveCrate != null &&
+                currentActiveCrate.IsPhysicallyFull &&
+                !isAddingMilk)
+            {
+                CompleteCrate();
+                UpdateProductionFullIcon();
+
+                // Queue boş değilse devam et
+                if (milkQueue.Count > 0)
+                    StartCoroutine(ProcessMilkQueue());
+            }
         }
         private void OnEnable()
         {
@@ -76,42 +92,32 @@ namespace MilkFarm
         public void LoadFromSaveData()
         {
             var saveData = saveManager.GetCurrentSaveData();
+            var packaging = GetPackagingSaveData(saveData); // ✅ TEK DEĞİŞİKLİK
 
-            // Capacity
-            capacityLevel = saveData.packaging.capacityLevel;
+            capacityLevel = packaging.capacityLevel;
             UpdateCapacity();
 
-            // ✅ CRITICAL: Clear existing cases before loading!
             ClearAllCases();
 
-            // ✅ YENİ: Production stack load
-            if (saveData.packaging.productionStackBottles != null)
+            if (packaging.productionStackBottles != null)
             {
-                foreach (int bottleCount in saveData.packaging.productionStackBottles)
+                foreach (int bottleCount in packaging.productionStackBottles)
                 {
                     if (bottleCount > 0)
-                    {
                         SpawnCrateWithBottles(bottleCount, isActiveCase: false);
-                    }
                 }
             }
 
-            // ✅ YENİ: Active crate load
-            if (saveData.packaging.activeCrateBottles > 0)
-            {
-                SpawnCrateWithBottles(saveData.packaging.activeCrateBottles, isActiveCase: true);
-            }
+            if (packaging.activeCrateBottles > 0)
+                SpawnCrateWithBottles(packaging.activeCrateBottles, isActiveCase: true);
 
-            // ✅ YENİ: Sales slots load
-            if (saveData.packaging.salesSlotBottles != null)
+            if (packaging.salesSlotBottles != null)
             {
-                for (int i = 0; i < saveData.packaging.salesSlotBottles.Count && i < salesSlots.Length; i++)
+                for (int i = 0; i < packaging.salesSlotBottles.Count && i < salesSlots.Length; i++)
                 {
-                    int bottleCount = saveData.packaging.salesSlotBottles[i];
+                    int bottleCount = packaging.salesSlotBottles[i];
                     if (bottleCount > 0)
-                    {
                         SpawnCrateInSalesSlot(i, bottleCount);
-                    }
                 }
             }
 
@@ -120,6 +126,8 @@ namespace MilkFarm
 
             Debug.Log($"[PackageManager] 📂 Loaded - Stack: {productionStack.Count}, Active: {(currentActiveCrate != null ? currentActiveCrate.landedMilkCount : 0)}/6");
         }
+
+
         private void ClearAllCases()
         {
             // Clear production stack
@@ -154,50 +162,44 @@ namespace MilkFarm
         public void SaveToData()
         {
             var saveData = saveManager.GetCurrentSaveData();
+            var packaging = GetPackagingSaveData(saveData); // ✅ TEK DEĞİŞİKLİK
 
-            // Capacity
-            saveData.packaging.capacityLevel = capacityLevel;
+            packaging.capacityLevel = capacityLevel;
 
-            // Production stack
-            saveData.packaging.productionStackBottles.Clear();
+            packaging.productionStackBottles.Clear();
             foreach (var crate in productionStack)
             {
                 if (crate != null)
-                {
-                    saveData.packaging.productionStackBottles.Add(crate.landedMilkCount);
-                }
+                    packaging.productionStackBottles.Add(crate.landedMilkCount);
             }
 
-            // Active crate
-            saveData.packaging.activeCrateBottles = (currentActiveCrate != null)
-                ? currentActiveCrate.landedMilkCount
-                : 0;
+            packaging.activeCrateBottles = (currentActiveCrate != null)
+                ? currentActiveCrate.landedMilkCount : 0;
 
-            // ✅ Sales slots - LIST SIZE CHECK!
-            // Ensure list is big enough
-            while (saveData.packaging.salesSlotBottles.Count < salesSlotsContents.Length)
-            {
-                saveData.packaging.salesSlotBottles.Add(-1);
-            }
+            while (packaging.salesSlotBottles.Count < salesSlotsContents.Length)
+                packaging.salesSlotBottles.Add(-1);
 
-            // Now safe to assign
             for (int i = 0; i < salesSlotsContents.Length; i++)
             {
                 if (salesSlotsContents[i] != null)
-                {
-                    saveData.packaging.salesSlotBottles[i] = salesSlotsContents[i].CurrentBottleCount;
-                }
+                    packaging.salesSlotBottles[i] = salesSlotsContents[i].CurrentBottleCount;
                 else
-                {
-                    saveData.packaging.salesSlotBottles[i] = -1;
-                }
+                    packaging.salesSlotBottles[i] = -1;
             }
 
             saveManager.SaveGame(saveData);
-
-            Debug.Log($"[PackageManager] 💾 Saved - Stack: {saveData.packaging.productionStackBottles.Count}, Active: {saveData.packaging.activeCrateBottles}");
+            Debug.Log($"[PackageManager] 💾 Saved - Stack: {packaging.productionStackBottles.Count}, Active: {packaging.activeCrateBottles}");
         }
-
+        private PackageSaveData GetPackagingSaveData(MilkFarmSaveData saveData)
+        {
+            if (isChickenScene)
+            {
+                if (saveData.chickenPackaging == null)
+                    saveData.chickenPackaging = new PackageSaveData();
+                return saveData.chickenPackaging;
+            }
+            return saveData.packaging;
+        }
         private void SpawnCrateWithBottles(int bottleCount, bool isActiveCase)
         {
             if (bottleCount <= 0) return;
@@ -264,7 +266,10 @@ namespace MilkFarm
         }
         private void UpdateCapacity()
         {
-            currentCapacity = config.packageStationCapacityBase + (capacityLevel - 1) * 4;
+            if (isChickenScene)
+                currentCapacity = config.chickenPackageStationCapacityBase + (capacityLevel - 1) * 4;
+            else
+                currentCapacity = config.packageStationCapacityBase + (capacityLevel - 1) * 4;
         }
 
         // === CASE SPAWN ===
@@ -291,118 +296,85 @@ namespace MilkFarm
             UpdateProductionFullIcon();
         }
 
-        // === SÜT EKLEME (QUEUE) ===
-
         public void AddMilk(int amount)
         {
             for (int i = 0; i < amount; i++)
-            {
-                AddMilk(caseSpawnPoint != null ? caseSpawnPoint.position : transform.position);
-            }
+                AddMilk(caseSpawnPoint != null ? caseSpawnPoint.position : transform.position, null);
         }
 
         public void AddMilk(Vector3 milkStartPos, SplineComputer spline = null, float cooldown = 200f)
         {
-            milkQueue.Enqueue(milkStartPos);
+            milkQueue.Enqueue(new MilkQueueItem(milkStartPos, spline));
 
             if (!isAddingMilk)
-            {
-                StartCoroutine(ProcessMilkQueue(spline, cooldown));
-            }
+                StartCoroutine(ProcessMilkQueue());
         }
 
         /// <summary>
         /// Süt queue'sunu işle (DÜZELTME)
         /// </summary>
-        private IEnumerator ProcessMilkQueue(SplineComputer spline = null, float cooldown = 200f)
+        private IEnumerator ProcessMilkQueue()
         {
             isAddingMilk = true;
 
             while (milkQueue.Count > 0)
             {
-                // === 1. CASE KONTROL ===
-
-                // Case yoksa spawn et
+                // === CRATE YOKSA SPAWN ===
                 if (currentActiveCrate == null)
                 {
-                    // Stack zaten max mı kontrol et
                     if (productionStack.Count >= maxProductionStack)
                     {
-                        Debug.LogWarning($"[PackageManager] Production FULL! Stack: {productionStack.Count}/{maxProductionStack}");
                         UpdateProductionFullIcon();
-
-                        // Queue'da bekle (skip etme!)
-                        yield return new WaitForSeconds(.5f);
+                        yield return new WaitForSeconds(0.5f);
                         continue;
                     }
 
                     SpawnNewCrate();
-                    yield return new WaitForSeconds(0.1f); // Spawn'ın tamamlanmasını bekle
+                    yield return new WaitForSeconds(0.05f);
+
+                    if (currentActiveCrate == null)
+                    {
+                        milkQueue.Dequeue();
+                        continue;
+                    }
                 }
 
-                // Hala case yoksa skip
-                if (currentActiveCrate == null)
+                // === CRATE RESERVE DOLU MU? (target bazlı) ===
+                if (!currentActiveCrate.HasSpace)
                 {
-                    Debug.LogError("[PackageManager] Case spawn FAILED!");
-                    milkQueue.Dequeue(); // Bu şişeyi skip et
+                    // Tüm slotlar reserve edilmiş, fiziksel varışı bekle
+                    while (currentActiveCrate != null && !currentActiveCrate.IsPhysicallyFull)
+                        yield return null;
+
+                    // Fiziksel olarak doldu → complete
+                    if (currentActiveCrate != null)
+                    {
+                        CompleteCrate();
+                        UpdateProductionFullIcon();
+                    }
+                    // Döngü başına dön → yeni crate spawn olacak
                     continue;
                 }
 
-                // === 2. PENDING MILK BEKLE ===
+                // === ÜRÜNÜ ANINDA YOLA ÇIKAR ===
+                MilkQueueItem item = milkQueue.Dequeue();
+                currentActiveCrate.AddMilkToCrate(milkBottlePrefab, item.position, null, item.spline);
+                MilkFarmEvents.MilkAddedToStation(0);
 
-                int safetyCounter = 0;
-                while (currentActiveCrate != null &&
-                       currentActiveCrate.targetMilkCount > currentActiveCrate.landedMilkCount &&
-                       safetyCounter < cooldown)
-                {
-                    yield return null;
-                    safetyCounter++;
-                }
-
-                if (safetyCounter >= cooldown)
-                {
-                    Debug.LogWarning("[PackageManager] Pending milk TIMEOUT!");
-                }
-
-                // === 3. DOLU MU KONTROL ===
-
-                // Case fiziksel olarak dolu mu?
-                if (currentActiveCrate != null && currentActiveCrate.IsPhysicallyFull)
-                {
-                    Debug.Log($"[PackageManager] Case FULL! Landed: {currentActiveCrate.landedMilkCount}/6");
-                    CompleteCrate();
-                    UpdateProductionFullIcon();
-
-                    // Bir sonraki iteration'da yeni case spawn edilecek (max kontrolü ile)
-                    yield return null;
-                    continue; // Bu iteration'ı bitir, yeni case'i başta kontrol et
-                }
-
-                // === 4. ŞİŞE EKLE ===
-
-                if (currentActiveCrate != null && currentActiveCrate.HasSpace)
-                {
-                    Vector3 milkPos = milkQueue.Dequeue();
-
-                    currentActiveCrate.AddMilkToCrate(milkBottlePrefab, milkPos, null, spline);
-                    MilkFarmEvents.MilkAddedToStation(0);
-
-                    Debug.Log($"[PackageManager] Şişe eklendi. Case: {currentActiveCrate.landedMilkCount}/6, Queue: {milkQueue.Count}");
-                }
-                else
-                {
-                    Debug.LogWarning("[PackageManager] Case dolu ama complete edilmemiş!");
-                    yield return null;
-                    continue;
-                }
-
-                yield return new WaitForSeconds(0.1f); // Flying animasyon için delay
+                // Çok kısa delay - sadece görsel spawn ayrımı için
+                yield return new WaitForSeconds(0.05f);
             }
 
-            Debug.Log("[PackageManager] Queue işleme tamamlandı.");
+            // === QUEUE BİTTİ ===
+            // Son crate dolmuş olabilir, kontrol et
+            if (currentActiveCrate != null && currentActiveCrate.IsPhysicallyFull)
+            {
+                CompleteCrate();
+                UpdateProductionFullIcon();
+            }
+
             isAddingMilk = false;
         }
-
         private void CompleteCrate()
         {
             if (currentActiveCrate == null) return;
@@ -701,6 +673,17 @@ namespace MilkFarm
         {
             int activeCrateCount = currentActiveCrate != null ? currentActiveCrate.landedMilkCount : 0;
             Debug.Log($"[DEBUG] Stack: {productionStack.Count}, Active: {activeCrateCount}/6, Queue: {milkQueue.Count}, Sales: {GetTotalBottleCount()}");
+        }
+    }
+    struct MilkQueueItem
+    {
+        public Vector3 position;
+        public SplineComputer spline;
+
+        public MilkQueueItem(Vector3 pos, SplineComputer spl)
+        {
+            position = pos;
+            spline = spl;
         }
     }
 }

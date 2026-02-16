@@ -41,11 +41,7 @@ namespace MilkFarm
         {
             if (stableManager == null) stableManager = FindObjectOfType<StableManager>();
 
-            bool isUnlocked = false;
-
-            if (stableManager.isChicken)
-                isUnlocked = stableManager.IsChickenStableUnlocked(stableIndex);
-            else isUnlocked = stableManager.IsStableUnlocked(stableIndex);
+            bool isUnlocked = stableManager.IsStableUnlocked(stableIndex);
 
             // Lock icon
             if (lockIcon != null)

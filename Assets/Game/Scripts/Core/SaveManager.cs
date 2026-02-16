@@ -4,11 +4,6 @@ using Zenject;
 
 namespace MilkFarm
 {
-    /// <summary>
-    /// PlayerPrefs ile save/load işlemlerini yöneten singleton manager
-    /// JSON formatında kayıt yapar
-    /// ✅ Config injection eklendi
-    /// </summary>
     public class SaveManager : MonoBehaviour
     {
         [Inject] private GameConfig config;
@@ -16,29 +11,15 @@ namespace MilkFarm
         private const string SAVE_KEY = "MilkFarm_SaveData_v1";
         private MilkFarmSaveData _currentSaveData;
 
-        private void Awake()
-        {
-        }
-
-        /// <summary>
-        /// Oyunu kaydet
-        /// </summary>
         public void SaveGame(MilkFarmSaveData data)
         {
             try
             {
-                // Timestamp güncelle
                 data.lastSaveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-                // JSON'a çevir
                 string json = JsonUtility.ToJson(data, true);
-
-                // PlayerPrefs'e kaydet
                 PlayerPrefs.SetString(SAVE_KEY, json);
                 PlayerPrefs.Save();
-
                 _currentSaveData = data;
-                Debug.Log($"[SaveManager] Oyun kaydedildi. Timestamp: {data.lastSaveTimestamp}");
             }
             catch (Exception e)
             {
@@ -46,10 +27,6 @@ namespace MilkFarm
             }
         }
 
-        /// <summary>
-        /// Oyunu yükle
-        /// ✅ Config uygulaması eklendi
-        /// </summary>
         public MilkFarmSaveData LoadGame()
         {
             try
@@ -62,116 +39,144 @@ namespace MilkFarm
                     if (data != null)
                     {
                         _currentSaveData = data;
-                         
-                        // ✅ Config'i stations'a uygula
-                        if (config != null)
-                        {
-                            _currentSaveData.ApplyConfigToStations(config);
-                            Debug.Log("[SaveManager] ✅ Config applied to stations");
-                        }
 
-                        Debug.Log($"[SaveManager] Oyun yüklendi. Timestamp: {data.lastSaveTimestamp}");
-                        return data;
+                        // ✅ MIGRATION: Eski save'de yeni field'lar yoksa oluştur
+                        MigrateIfNeeded(_currentSaveData);
+
+                        if (config != null)
+                            _currentSaveData.ApplyConfigToStations(config);
+
+                        return _currentSaveData;
                     }
                 }
 
-                // Kayıt yoksa yeni oluştur
-                Debug.Log("[SaveManager] Kayıt bulunamadı, yeni kayıt oluşturuluyor.");
                 _currentSaveData = new MilkFarmSaveData();
-
-                // ✅ Config'i yeni save'e uygula
                 if (config != null)
-                {
                     _currentSaveData.ApplyConfigToStations(config);
-                    Debug.Log("[SaveManager] ✅ Config applied to new save");
-                }
-
                 return _currentSaveData;
             }
             catch (Exception e)
             {
                 Debug.LogError($"[SaveManager] Yükleme hatası: {e.Message}");
                 _currentSaveData = new MilkFarmSaveData();
-
-                // ✅ Config'i error save'e uygula
                 if (config != null)
-                {
                     _currentSaveData.ApplyConfigToStations(config);
-                }
-
                 return _currentSaveData;
             }
         }
 
         /// <summary>
-        /// Mevcut save data'yı al
+        /// Eski save'leri yeni field'larla uyumlu hale getir.
+        /// JsonUtility eski save'de olmayan field'ları default yapar:
+        /// - List → null (boş liste DEĞİL!)
+        /// - float → 0f
+        /// - int → 0
+        /// Bu yüzden null kontrol yapıp initialize etmemiz lazım.
         /// </summary>
+        private void MigrateIfNeeded(MilkFarmSaveData data)
+        {
+            bool migrated = false;
+
+            // --- Chicken save data ---
+            if (data.chickens == null || data.chickens.Count == 0)
+            {
+                data.chickens = new System.Collections.Generic.List<ChickenSaveData>();
+                for (int i = 0; i < 12; i++)
+                    data.chickens.Add(new ChickenSaveData(i, i == 0));
+                migrated = true;
+                Debug.Log("[SaveManager] 🔄 Migration: chickens list oluşturuldu");
+            }
+
+            // --- Chicken stations ---
+            if (data.chickenStations == null || data.chickenStations.Count == 0)
+            {
+                data.chickenStations = new System.Collections.Generic.List<StationSaveData>();
+                for (int i = 0; i < 4; i++)
+                    data.chickenStations.Add(new StationSaveData());
+                migrated = true;
+                Debug.Log("[SaveManager] 🔄 Migration: chickenStations oluşturuldu");
+            }
+
+            // --- Chicken packaging ---
+            if (data.chickenPackaging == null)
+            {
+                data.chickenPackaging = new PackageSaveData();
+                migrated = true;
+                Debug.Log("[SaveManager] 🔄 Migration: chickenPackaging oluşturuldu");
+            }
+
+            // --- Unlock lists ---
+            if (data.unlockedChickens == null)
+            {
+                data.unlockedChickens = new System.Collections.Generic.List<int>();
+                migrated = true;
+            }
+            if (data.unlockedChickenAreas == null)
+            {
+                data.unlockedChickenAreas = new System.Collections.Generic.List<int>();
+                migrated = true;
+            }
+
+            // --- IAP chicken lists ---
+            if (data.iap != null)
+            {
+                if (data.iap.unlockedChickens == null)
+                    data.iap.unlockedChickens = new System.Collections.Generic.List<int>();
+                if (data.iap.unlockedChickenAreas == null)
+                    data.iap.unlockedChickenAreas = new System.Collections.Generic.List<int>();
+            }
+
+            // Migration yaptıysa hemen kaydet (bir kerelik)
+            if (migrated)
+            {
+                Debug.Log("[SaveManager] ✅ Migration tamamlandı, kaydediliyor...");
+                SaveGame(data);
+            }
+        }
+
         public MilkFarmSaveData GetCurrentSaveData()
         {
             if (_currentSaveData == null)
-            {
                 _currentSaveData = LoadGame();
-            }
             return _currentSaveData;
         }
 
-        /// <summary>
-        /// Kayıtları sıfırla (debug için)
-        /// </summary>
         public void ResetSave()
         {
             PlayerPrefs.DeleteKey(SAVE_KEY);
             PlayerPrefs.Save();
             _currentSaveData = new MilkFarmSaveData();
-
-            // ✅ Config'i reset save'e uygula
             if (config != null)
-            {
                 _currentSaveData.ApplyConfigToStations(config);
-            }
-
             Debug.Log("[SaveManager] Kayıtlar sıfırlandı!");
         }
 
-        /// <summary>
-        /// Otomatik kayıt (belirli aralıklarla)
-        /// </summary>
         private void Start()
         {
-            InvokeRepeating(nameof(AutoSave), 30f, 30f); // Her 30 saniyede bir kaydet
+            InvokeRepeating(nameof(AutoSave), 30f, 30f);
         }
 
         private void AutoSave()
         {
             if (_currentSaveData != null)
-            {
                 SaveGame(_currentSaveData);
-            }
         }
 
         private void OnApplicationPause(bool pauseStatus)
         {
             if (pauseStatus)
             {
-                Debug.Log("[SaveManager] 🔔 Pause - Triggering save event");
-                MilkFarmEvents.SaveRequested(); // ✅ Event fire
-
+                MilkFarmEvents.SaveRequested();
                 if (_currentSaveData != null)
-                {
                     SaveGame(_currentSaveData);
-                }
             }
         }
 
         private void OnApplicationQuit()
         {
-            Debug.Log("[SaveManager] 🔔 Quit - Triggering save event");
-            MilkFarmEvents.SaveRequested(); // ✅ Event fire
-
+            MilkFarmEvents.SaveRequested();
             if (_currentSaveData != null)
-            {
                 SaveGame(_currentSaveData);
-            }
         }
     }
 }

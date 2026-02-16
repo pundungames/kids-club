@@ -180,6 +180,8 @@ namespace MilkFarm
         }
         public void Home()
         {
+            MilkFarmEvents.SaveRequested(); // ✅ Save fire et
+
             SceneManager.LoadScene(1);
         }
     }

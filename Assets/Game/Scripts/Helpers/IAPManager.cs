@@ -223,7 +223,7 @@ namespace MilkFarm
         private void HandleChickenAreaUnlock(int areaIndex)
         {
             if (stableManager == null) return;
-            if (stableManager.IsChickenStableUnlocked(areaIndex)) return;
+            if (stableManager.IsStableUnlocked(areaIndex)) return;
 
             stableManager.UnlockStable(areaIndex, free: true);
 

@@ -471,6 +471,8 @@ namespace MilkFarm
             }
 
             MilkFarmEvents.CowUpgraded(globalIndex, cow.level);
+            SaveToData(); // ✅ BU SATIRI EKLE!
+
 
             Debug.Log($"[CowManager] ✅ Cow {globalIndex} upgraded to Level {cow.level}!");
             return true;

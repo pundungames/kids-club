@@ -64,12 +64,14 @@ namespace ChickenFarm
         {
             ChickenFarmEvents.OnChickenUnlocked += HandleChickenUnlocked;
             ChickenFarmEvents.OnSaveRequested += HandleSaveRequested;
+            MilkFarmEvents.OnSaveRequested += HandleSaveRequested; // ✅ SaveManager bunu fire ediyor!
         }
 
         private void OnDisable()
         {
             ChickenFarmEvents.OnChickenUnlocked -= HandleChickenUnlocked;
             ChickenFarmEvents.OnSaveRequested -= HandleSaveRequested;
+            MilkFarmEvents.OnSaveRequested -= HandleSaveRequested; // ✅
         }
 
         private void HandleSaveRequested() => SaveToData();
@@ -214,6 +216,7 @@ namespace ChickenFarm
             c.level++;
             if (c.controller != null) c.controller.OnLevelChanged(c.level);
             ChickenFarmEvents.ChickenUpgraded(globalIndex, c.level);
+            SaveToData(); // ✅ Upgrade save!
             return true;
         }
 

@@ -23,6 +23,7 @@ namespace MilkFarm
         [Header("=== PAKETLEME ===")]
         public int packageSize = 4;
         public int packageStationCapacityBase = 8;
+        public int chickenPackageStationCapacityBase = 16;
 
         [Header("=== MÜŞTERİLER ===")]
         public int customerQueueMax = 4;
